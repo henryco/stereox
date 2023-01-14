@@ -1,6 +1,15 @@
-(ns stereox.core)
+(ns stereox.core
+  (:require [cljfx.api :as fx]))
 
-(defn foo
-  "I don't do a whole lot."
-  [x]
-  (println x "Hello, World!"))
+(fx/on-fx-thread
+  (fx/create-component
+    {:fx/type :stage
+     :showing true
+     :title "Cljfx example"
+     :width 300
+     :height 100
+     :scene {:fx/type :scene
+             :root {:fx/type :v-box
+                    :alignment :center
+                    :children [{:fx/type :label
+                                :text "Hello world"}]}}}))
