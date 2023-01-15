@@ -1,6 +1,4 @@
 (ns stereox.calibration
-  (:require
-    [clojure.java.io :as io])
   (:import (java.io File))
   (:gen-class))
 
