@@ -17,23 +17,12 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="Leiningen: cljfx:1.7.22" level="project" />
-    <orderEntry type="library" name="Leiningen: cljfx:1.7.22:jdk11" level="project" />
     <orderEntry type="library" name="Leiningen: nrepl:1.0.0" level="project" />
     <orderEntry type="library" name="Leiningen: org.clojure/clojure:1.11.1" level="project" />
     <orderEntry type="library" name="Leiningen: org.clojure/core.specs.alpha:0.2.62" level="project" />
     <orderEntry type="library" name="Leiningen: org.clojure/spec.alpha:0.3.218" level="project" />
+    <orderEntry type="library" name="Leiningen: org.clojure/tools.cli:1.0.214" level="project" />
     <orderEntry type="library" name="Leiningen: org.nrepl/incomplete:0.1.0" level="project" />
-    <orderEntry type="library" name="Leiningen: org.openjfx/javafx-base:17.0.2" level="project" />
-    <orderEntry type="library" name="Leiningen: org.openjfx/javafx-base:17.0.2:linux" level="project" />
-    <orderEntry type="library" name="Leiningen: org.openjfx/javafx-controls:17.0.2" level="project" />
-    <orderEntry type="library" name="Leiningen: org.openjfx/javafx-controls:17.0.2:linux" level="project" />
-    <orderEntry type="library" name="Leiningen: org.openjfx/javafx-graphics:17.0.2" level="project" />
-    <orderEntry type="library" name="Leiningen: org.openjfx/javafx-graphics:17.0.2:linux" level="project" />
-    <orderEntry type="library" name="Leiningen: org.openjfx/javafx-media:17.0.2" level="project" />
-    <orderEntry type="library" name="Leiningen: org.openjfx/javafx-media:17.0.2:linux" level="project" />
-    <orderEntry type="library" name="Leiningen: org.openjfx/javafx-web:17.0.2" level="project" />
-    <orderEntry type="library" name="Leiningen: org.openjfx/javafx-web:17.0.2:linux" level="project" />
     <orderEntry type="library" name="Leiningen: org.openpnp/opencv:4.6.0-0" level="project" />
   </component>
 </module>
