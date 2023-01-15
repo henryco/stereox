@@ -2,7 +2,7 @@
 <module type="JAVA_MODULE" version="4">
   <component name="BuildSystem">
     <option name="buildSystemId" value="LEININGEN" />
-    <option name="displayName" value="stereox:0.1.0-SNAPSHOT" />
+    <option name="displayName" value="stereox:0.0.1" />
   </component>
   <component name="NewModuleRootManager">
     <output url="file://$MODULE_DIR$/target/classes" />
@@ -34,5 +34,6 @@
     <orderEntry type="library" name="Leiningen: org.openjfx/javafx-media:17.0.2:linux" level="project" />
     <orderEntry type="library" name="Leiningen: org.openjfx/javafx-web:17.0.2" level="project" />
     <orderEntry type="library" name="Leiningen: org.openjfx/javafx-web:17.0.2:linux" level="project" />
+    <orderEntry type="library" name="Leiningen: org.openpnp/opencv:4.6.0-0" level="project" />
   </component>
 </module>
