@@ -1,12 +1,12 @@
 (ns stereox.calibration
+  (:require [cljfx.api :as fx])
   (:import (java.io ByteArrayInputStream File)
            (javafx.animation AnimationTimer)
-           (javafx.scene.image Image ImageView)
+           (javafx.scene.image Image)
+           (nu.pattern OpenCV)
            (org.opencv.core Mat MatOfByte)
            (org.opencv.imgcodecs Imgcodecs)
-           (org.opencv.videoio VideoCapture)
-           (nu.pattern OpenCV))
-  (:require [cljfx.api :as fx])
+           (org.opencv.videoio VideoCapture))
   (:gen-class))
 
 (OpenCV/loadShared)
