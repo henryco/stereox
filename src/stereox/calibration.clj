@@ -11,11 +11,16 @@
 
 (OpenCV/loadShared)
 
+(def ^:private *state
+  (atom {:title "StereoX calibration"
+         :camera {:viewport {:width 640 :height 480 :min-x 0 :min-y 0}
+                  :image nil}
+         ; TODO: MORE STATE
+         }))
+
+; TODO: CAMERA CHOICE
 (def ^:private capture
   (VideoCapture. 0))
-
-(def ^:private imageView
-  (ImageView.))
 
 (defn mat2image ^Image [^Mat mat]
   (let [bytes (MatOfByte.)]
@@ -31,42 +36,36 @@
   (if (not (.exists dir))
     (.mkdir dir)))
 
+(defn render-image-view [{:keys [camera]}]
+  (merge {:fx/type :image-view
+          :viewport (:viewport camera)
+          :preserve-ratio true}
+         (let [{img :image} camera]
+           (if (nil? img) {} {:image img}))))
 
-;; Define application state
-(def *state
-  (atom {:title "App title"}))
+(defn render-label [{:keys [title]}]
+  {:fx/type :label :text title})
 
-;; Define render functions
-(defn title-input [{:keys [title]}]
-  {:fx/type :text-field
-   :on-text-changed #(swap! *state assoc :title %)
-   :text title})
-
-(defn root [{:keys [title]}]
+(defn root [state]
   {:fx/type :stage
    :showing true
-   :title title
+   :title (:title state)
    :scene {:fx/type :scene
            :root {:fx/type :v-box
-                  :children [{:fx/type :label
-                              :text "Window title input"}
-                             {:fx/type title-input
-                              :title title}]}}})
-
-;; Create renderer with middleware that maps incoming data - description -
-;; to component description that can be used to render JavaFX state.
-;; Here description is just passed as an argument to function component.
-(def renderer
-  (fx/create-renderer
-    :middleware (fx/wrap-map-desc assoc :fx/type root)))
-
+                  :children [(merge state {:fx/type render-label})
+                             (merge state {:fx/type render-image-view})]
+                  }}})
 
 (def ^:private timer
   (proxy [AnimationTimer] []
     (handle [_]
-      (.setImage imageView (get-capture))
-      ; FIXME: REPLACE WITH ATOM
+      (swap! *state assoc-in [:camera :image] (get-capture))
+      ;TODO: MORE
       )))
+
+(def ^:private renderer
+  (fx/create-renderer
+    :middleware (fx/wrap-map-desc assoc :fx/type root)))
 
 (defn calibrate [& {:keys [rows columns square-size output-folder] :as all}]
   (println (pr-str all))
