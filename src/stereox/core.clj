@@ -11,25 +11,34 @@
   [["-r" "--rows ROWS" "Number of rows"
     :default 8
     :parse-fn #(Integer/parseInt %)
-    :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
+    :validate [#(< 5 % 0x10000) "Must be a number between 5 and 65536"]]
 
    ["-c" "--columns COLUMNS" "Number of columns"
     :default 6
     :parse-fn #(Integer/parseInt %)
-    :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
+    :validate [#(< 5 % 0x10000) "Must be a number between 5 and 65536"]]
 
    ["-s" "--square-size SIZE" "Square size in cm"
-    :default 2
-    :parse-fn #(Integer/parseInt %)
+    :default 2.
+    :parse-fn #(Float/parseFloat %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
-   [nil "--show-chessboards" "Show detected chessboard"]
+   ["-n" "--images-number NUMBER" "Number of images"
+    :default 4
+    :parse-fn #(Integer/parseInt %)
+    :validate [#(< 3 % 256) "Must be a number between 3 and 256"]]
+
+   ["-i" "--camera-id ID..." "Camera ID (one or more)"
+    :multi true
+    :missing "Must be at least one camera ID"
+    :update-fn conj]
+
+   [nil "--show-chessboard" "Show detected chessboard"]
 
    ["-o" "--output-folder FOLDER_NAME" "Folder to write calibration files to"
     :parse-fn #(io/file %)
     :missing "Output folder option is required"
-    :validate [#(or (not (.exists %)) (.isDirectory %)) "File should be DIRECTORY or not exist"]
-    ]
+    :validate [#(or (not (.exists %)) (.isDirectory %)) "File should be DIRECTORY or not exist"]]
 
    ["-h" "--help"]])
 
