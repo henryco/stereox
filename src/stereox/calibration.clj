@@ -14,24 +14,26 @@
 
 (def ^:private *state
   (atom {:title  "StereoX calibration"
+         :alive  true
          :camera {:viewport {:width 0 :height 0 :min-x 0 :min-y 0}
-                  :image    nil}
-         ; TODO: MORE STATE
-         }))
-
-(def ^:private *internal
-  (atom {:alive   true
-         :capture ^VideoCapture []
+                  :capture  ^VideoCapture []
+                  :image    ^Image []
+                  }
          }))
 
 (defn create-codec [[a b c d]]
   (VideoWriter/fourcc a b c d))
 
+(defn prep-dirs [^File dir]
+  (if (not (.exists dir))
+    (.mkdir dir)))
+
 (defn init-camera [ids width height codec gain gamma brightness fps exposure]
+  ; setup Image canvas settings
   (swap! *state assoc-in [:camera :viewport]
          {:width width :height height :min-x 0 :min-y 0})
-
-  (swap! *internal assoc :capture
+  ; setup Video capture vector
+  (swap! *state assoc-in [:camera :capture]
          (map #(let [capture (VideoCapture.
                                (Integer/parseInt %)
                                Videoio/CAP_ANY
@@ -56,8 +58,8 @@
                                     Videoio/CAP_PROP_FPS fps]
                                    (flatten) (vec) (int-array) (MatOfInt.)))]
                  (println "FPS:" (.get capture Videoio/CAP_PROP_FPS))
-                 capture) ; return initialized video capture
-              ids)        ; return captures for every id
+                 capture)                                   ; return initialized video capture
+              ids)                                          ; return captures for every id
          )
   )
 
@@ -66,35 +68,43 @@
     (Imgcodecs/imencode ".png" mat bytes)
     (Image. (ByteArrayInputStream. (.toArray bytes)))))
 
-(defn get-capture []
-  (let [mat (Mat.)
-        cap (nth (:capture @*internal) 0)]
-    (.read ^VideoCapture cap mat)
-    (mat2image mat)))
+(defn grab-capture []
+  (let [captures (-> @*state :camera :capture)]
+    (run! #(.grab ^VideoCapture %) captures)
+    (-> #(let [mat (Mat.)]
+           (.retrieve ^VideoCapture % mat)
+           (mat2image mat))
+        (map captures))))
 
-(defn prep-dirs [^File dir]
-  (if (not (.exists dir))
-    (.mkdir dir)))
-
-(defn render-image-view [{:keys [camera]}]
-  (merge {:fx/type        :image-view
-          :viewport       (:viewport camera)
-          :preserve-ratio true}
-         (let [{img :image} camera]
-           (if (nil? img) {} {:image img}))))
-
-(defn render-label [{:keys [title]}]
-  {:fx/type :label :text title})
+(def ^:private timer
+  (proxy [AnimationTimer] []
+    (handle [_]
+      (if (:alive @*state)
+        (swap! *state assoc-in [:camera :image] (grab-capture))
+        ;TODO: MORE
+        ))))
 
 (defn shutdown [& _]
   (try
-    (swap! *internal assoc :alive false)
-    (run! #(.release %) (:capture @*internal))
+    (swap! *state assoc :alive false)
+    (run! #(.release %) (:capture (:camera @*state)))
     (catch Exception e (.printStackTrace e)))
   (try
     (Platform/exit)
     (catch Exception e (.printStackTrace e))
     (finally (System/exit 0))))
+
+(defn render-images [{:keys [camera]}]
+  {:fx/type    :h-box
+   :min-width  (-> camera :viewport :width (* 2))
+   :min-height (-> camera :viewport :height)
+   :children   (-> #(merge {:fx/type        :image-view
+                            :viewport       (:viewport camera)
+                            :preserve-ratio true
+                            :image          %})
+                   (map (filter #(not (nil? %))
+                                (:image camera))))
+   })
 
 (defn root [state]
   {:fx/type          :stage
@@ -104,17 +114,10 @@
    :on-close-request shutdown
    :scene            {:fx/type :scene
                       :root    {:fx/type  :v-box
-                                :children [(merge state {:fx/type render-label})
-                                           (merge state {:fx/type render-image-view})]
-                                }}})
-
-(def ^:private timer
-  (proxy [AnimationTimer] []
-    (handle [_]
-      (if (:alive @*internal)
-        (swap! *state assoc-in [:camera :image] (get-capture))
-        ;TODO: MORE
-        ))))
+                                :children [(merge state {:fx/type render-images})]
+                                }
+                      }
+   })
 
 (def ^:private renderer
   (fx/create-renderer
