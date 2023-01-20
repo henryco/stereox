@@ -21,13 +21,13 @@
 
 (def ^:private *internal
   (atom {:alive   true
-         :capture []      ; vector of VideoCaptures
+         :capture []                                        ; vector of VideoCaptures
          }))
 
 (defn create-codec [[a b c d]]
-  (VideoWriter/fourcc a b c d ))
+  (VideoWriter/fourcc a b c d))
 
-(defn init-camera [ids width height codec]
+(defn init-camera [ids width height codec gain gamma brightness fps exposure]
   (swap! *state assoc-in [:camera :viewport]
          {:width width :height height :min-x 0 :min-y 0})
 
@@ -35,16 +35,27 @@
          (map #(let [capture (VideoCapture.
                                (Integer/parseInt %)
                                Videoio/CAP_ANY
-                               (MatOfInt.
-                                 (int-array [Videoio/CAP_PROP_FOURCC (create-codec codec)
-                                             Videoio/CAP_PROP_FRAME_WIDTH width
-                                             Videoio/CAP_PROP_FRAME_HEIGHT height
-                                             Videoio/CAP_PROP_AUTO_EXPOSURE 1
-                                             Videoio/CAP_PROP_EXPOSURE 200
-                                             Videoio/CAP_PROP_FPS 30])
-                                 ))]
+                               (-> [Videoio/CAP_PROP_FOURCC (create-codec codec)
+                                    Videoio/CAP_PROP_FRAME_WIDTH width
+                                    Videoio/CAP_PROP_FRAME_HEIGHT height
+
+                                    (if (not (nil? exposure))
+                                      [Videoio/CAP_PROP_AUTO_EXPOSURE 1
+                                       Videoio/CAP_PROP_EXPOSURE exposure]
+                                      [Videoio/CAP_PROP_AUTO_EXPOSURE 3])
+
+                                    (if (not (nil? brightness))
+                                      [Videoio/CAP_PROP_BRIGHTNESS brightness] [])
+
+                                    (if (not (nil? gamma))
+                                      [Videoio/CAP_PROP_GAMMA gamma] [])
+
+                                    (if (not (nil? gain))
+                                      [Videoio/CAP_PROP_GAIN gain] [])
+
+                                    Videoio/CAP_PROP_FPS fps]
+                                   (flatten) (vec) (int-array) (MatOfInt.)))]
                  (println "FPS:" (.get capture Videoio/CAP_PROP_FPS))
-                 (println (.get capture Videoio/CAP_PROP_EXPOSURE))
                  capture) ids))
   )
 
@@ -112,12 +123,17 @@
                            width
                            height
                            codec
+                           gamma
+                           exposure
+                           fps
+                           gain
+                           brightness
                            square-size
                            output-folder
                            camera-id] :as all}]
   (println (pr-str all))
   (prep-dirs output-folder)
-  (init-camera camera-id width height codec)
+  (init-camera camera-id width height codec gain gamma brightness fps exposure)
 
   ;; Convenient way to add watch to an atom + immediately render app
   (fx/mount-renderer *state renderer)

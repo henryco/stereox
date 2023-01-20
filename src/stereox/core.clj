@@ -38,15 +38,40 @@
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
-   ["-e" "--height HEIGHT" "Frame height in PX"
+   ["-h" "--height HEIGHT" "Frame height in PX"
     :default 720
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
    [nil "--codec CODEC" "Camera output codec"
-    :default [\M \J \P \G]
+    :default [\Y \U \Y \V]
     :parse-fn #(-> (str %) .trim .toUpperCase .toCharArray seq vec)
     :validate [#(= 4 (count %)) "Must be 4 chars codec code, eg. MJPG"]]
+
+   ["-f" "--fps FPS" "Camera FPS"
+    :default 30
+    :parse-fn #(Integer/parseInt %)
+    :validate [#(< 0 % 300) "Must be a number between 0 and 300"]]
+
+   ["-e" "--exposure EXPOSURE" "Camera exposure"
+    :default nil
+    :parse-fn #(Integer/parseInt %)
+    :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
+
+   ["-g" "--gain GAIN" "Camera gain"
+    :default nil
+    :parse-fn #(Integer/parseInt %)
+    :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
+
+   ["-m" "--gamma GAMMA" "Camera gamma"
+    :default nil
+    :parse-fn #(Integer/parseInt %)
+    :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
+
+   ["-b" "--brightness BRIGHTNESS" "Camera brightness"
+    :default nil
+    :parse-fn #(Integer/parseInt %)
+    :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
    [nil "--show-chessboard" "Show detected chessboard"]
 
@@ -55,7 +80,7 @@
     :missing "Output folder option is required"
     :validate [#(or (not (.exists %)) (.isDirectory %)) "File should be DIRECTORY or not exist"]]
 
-   ["-h" "--help"]])
+   [nil "--help"]])
 
 (defn error-msg [errors]
   (str " - " (string/join "\n - " errors)))
