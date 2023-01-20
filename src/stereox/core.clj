@@ -43,6 +43,11 @@
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
+   [nil "--codec CODEC" "Camera output codec"
+    :default [\M \J \P \G]
+    :parse-fn #(-> (str %) .trim .toUpperCase .toCharArray seq vec)
+    :validate [#(= 4 (count %)) "Must be 4 chars codec code, eg. MJPG"]]
+
    [nil "--show-chessboard" "Show detected chessboard"]
 
    ["-o" "--output-folder FOLDER_NAME" "Folder to write calibration files to"

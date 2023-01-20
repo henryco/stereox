@@ -24,7 +24,10 @@
          :capture []      ; vector of VideoCaptures
          }))
 
-(defn init-camera [ids width height]
+(defn create-codec [[a b c d]]
+  (VideoWriter/fourcc a b c d ))
+
+(defn init-camera [ids width height codec]
   (swap! *state assoc-in [:camera :viewport]
          {:width width :height height :min-x 0 :min-y 0})
 
@@ -33,15 +36,16 @@
                                (Integer/parseInt %)
                                Videoio/CAP_ANY
                                (MatOfInt.
-                                 (int-array [Videoio/CAP_PROP_FOURCC (VideoWriter/fourcc \M \J \P \G )
+                                 (int-array [Videoio/CAP_PROP_FOURCC (create-codec codec)
                                              Videoio/CAP_PROP_FRAME_WIDTH width
                                              Videoio/CAP_PROP_FRAME_HEIGHT height
+                                             Videoio/CAP_PROP_AUTO_EXPOSURE 1
+                                             Videoio/CAP_PROP_EXPOSURE 200
                                              Videoio/CAP_PROP_FPS 30])
-                                 )
-                               )]
+                                 ))]
                  (println "FPS:" (.get capture Videoio/CAP_PROP_FPS))
+                 (println (.get capture Videoio/CAP_PROP_EXPOSURE))
                  capture) ids))
-
   )
 
 (defn mat2image ^Image [^Mat mat]
@@ -107,12 +111,13 @@
                            columns
                            width
                            height
+                           codec
                            square-size
                            output-folder
                            camera-id] :as all}]
   (println (pr-str all))
   (prep-dirs output-folder)
-  (init-camera camera-id width height)
+  (init-camera camera-id width height codec)
 
   ;; Convenient way to add watch to an atom + immediately render app
   (fx/mount-renderer *state renderer)
