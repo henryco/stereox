@@ -5,28 +5,44 @@
            (javafx.application Platform)
            (javafx.scene.image Image)
            (nu.pattern OpenCV)
-           (org.opencv.core Mat MatOfByte)
+           (org.opencv.core Mat MatOfByte MatOfInt)
            (org.opencv.imgcodecs Imgcodecs)
-           (org.opencv.videoio VideoCapture))
+           (org.opencv.videoio VideoCapture VideoWriter Videoio))
   (:gen-class))
 
 (OpenCV/loadShared)
 
 (def ^:private *state
   (atom {:title  "StereoX calibration"
-         :camera {:viewport {:width 640 :height 480 :min-x 0 :min-y 0}
+         :camera {:viewport {:width 0 :height 0 :min-x 0 :min-y 0}
                   :image    nil}
          ; TODO: MORE STATE
          }))
 
-; TODO: CAMERA CHOICE
-(def ^:private capture
-  (VideoCapture. 0))
-
 (def ^:private *internal
-  (atom {:alive true
-         :capture []                                        ; vector of VideoCapture
+  (atom {:alive   true
+         :capture []      ; vector of VideoCaptures
          }))
+
+(defn init-camera [ids width height]
+  (swap! *state assoc-in [:camera :viewport]
+         {:width width :height height :min-x 0 :min-y 0})
+
+  (swap! *internal assoc :capture
+         (map #(let [capture (VideoCapture.
+                               (Integer/parseInt %)
+                               Videoio/CAP_ANY
+                               (MatOfInt.
+                                 (int-array [Videoio/CAP_PROP_FOURCC (VideoWriter/fourcc \M \J \P \G )
+                                             Videoio/CAP_PROP_FRAME_WIDTH width
+                                             Videoio/CAP_PROP_FRAME_HEIGHT height
+                                             Videoio/CAP_PROP_FPS 30])
+                                 )
+                               )]
+                 (println "FPS:" (.get capture Videoio/CAP_PROP_FPS))
+                 capture) ids))
+
+  )
 
 (defn mat2image ^Image [^Mat mat]
   (let [bytes (MatOfByte.)]
@@ -34,8 +50,9 @@
     (Image. (ByteArrayInputStream. (.toArray bytes)))))
 
 (defn get-capture []
-  (let [mat (Mat.)]
-    (.read capture mat)
+  (let [mat (Mat.)
+        cap (nth (:capture @*internal) 0)]
+    (.read ^VideoCapture cap mat)
     (mat2image mat)))
 
 (defn prep-dirs [^File dir]
@@ -55,7 +72,7 @@
 (defn shutdown [& _]
   (try
     (swap! *internal assoc :alive false)
-    (.release capture)
+    (run! #(.release %) (:capture @*internal))
     (catch Exception e (.printStackTrace e)))
   (try
     (Platform/exit)
@@ -86,10 +103,16 @@
   (fx/create-renderer
     :middleware (fx/wrap-map-desc assoc :fx/type root)))
 
-(defn calibrate [& {:keys [rows columns square-size output-folder] :as all}]
+(defn calibrate [& {:keys [rows
+                           columns
+                           width
+                           height
+                           square-size
+                           output-folder
+                           camera-id] :as all}]
   (println (pr-str all))
-  (println (.getBackendName capture))
   (prep-dirs output-folder)
+  (init-camera camera-id width height)
 
   ;; Convenient way to add watch to an atom + immediately render app
   (fx/mount-renderer *state renderer)

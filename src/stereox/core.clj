@@ -33,6 +33,16 @@
     :missing "Must be at least one camera ID"
     :update-fn conj]
 
+   ["-w" "--width WIDTH" "Frame width in PX"
+    :default 1280
+    :parse-fn #(Integer/parseInt %)
+    :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
+
+   ["-e" "--height HEIGHT" "Frame height in PX"
+    :default 720
+    :parse-fn #(Integer/parseInt %)
+    :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
+
    [nil "--show-chessboard" "Show detected chessboard"]
 
    ["-o" "--output-folder FOLDER_NAME" "Folder to write calibration files to"
@@ -65,9 +75,12 @@
       :else
       {:options options})))
 
+(defn camera-ops-to-vec [& {:keys [camera-id] :as options}]
+  (merge options {:camera-id (vec camera-id)}))
 
 (defn -main [& args]
   (let [{:keys [options exit-message ok?]} (validate-args args)]
     (if exit-message
       (exit (if ok? 0 1) exit-message)
-      (cbr/calibrate options))))
+      (cbr/calibrate (camera-ops-to-vec options))
+      )))
