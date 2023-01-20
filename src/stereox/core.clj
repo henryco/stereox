@@ -34,12 +34,12 @@
     :update-fn conj]
 
    ["-w" "--width WIDTH" "Frame width in PX"
-    :default 1280
+    :default 640
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
    ["-h" "--height HEIGHT" "Frame height in PX"
-    :default 720
+    :default 480
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 

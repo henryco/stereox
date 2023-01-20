@@ -21,7 +21,7 @@
 
 (def ^:private *internal
   (atom {:alive   true
-         :capture []                                        ; vector of VideoCaptures
+         :capture ^VideoCapture []
          }))
 
 (defn create-codec [[a b c d]]
@@ -56,7 +56,9 @@
                                     Videoio/CAP_PROP_FPS fps]
                                    (flatten) (vec) (int-array) (MatOfInt.)))]
                  (println "FPS:" (.get capture Videoio/CAP_PROP_FPS))
-                 capture) ids))
+                 capture) ; return initialized video capture
+              ids)        ; return captures for every id
+         )
   )
 
 (defn mat2image ^Image [^Mat mat]
