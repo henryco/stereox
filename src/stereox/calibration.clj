@@ -100,29 +100,31 @@
     (catch Exception e (.printStackTrace e))
     (finally (System/exit 0))))
 
-(defn on-win-change [{:keys [width height]}]
-  (let [w (-> @*state :camera :viewport :width)
-        h (-> @*state :camera :viewport :height)
+(defn on-win-change []
+  (let [s (-> @*state :scale)
+        ow (-> @*state :camera :viewport :width)
+        oh (-> @*state :camera :viewport :height)
         ww (-> @*window :width)
-        hh (-> @*window :height)
-        r (/ w h)
-        ]
+        hh (-> @*window :height)]
     (if (and (some? ww) (some? hh))
-      (println ww ":" hh)
-      ;TODO
-      ))
-  )
+      (let [[dw dh] (map - [ww hh] [(* ow s 2) (* oh s)])]
+        (if (< dw dh)
+          (swap! *state assoc :scale (/ ww ow 2))
+          (swap! *state assoc :scale (/ hh oh)))
+        )
+      )))
 
 (defn on-win-height-change [v]
   (swap! *window assoc :height v)
-  (on-win-change {:height v}))
+  (on-win-change))
 
 (defn on-win-width-change [v]
   (swap! *window assoc :width v)
-  (on-win-change {:width v}))
+  (on-win-change))
 
 (defn render-images [{:keys [camera scale]}]
   {:fx/type    :h-box
+   :style      {:-fx-background-color :black}
    :min-width  (-> camera :viewport :width (* 2 scale))
    :min-height (-> camera :viewport :height (* scale))
    :children   (-> #(merge {:fx/type        :image-view
@@ -144,6 +146,7 @@
    :on-width-changed  on-win-width-change
    :scene             {:fx/type :scene
                        :root    {:fx/type  :v-box
+                                 :style   {:-fx-background-color :black}
                                  :children [(merge state {:fx/type render-images})]
                                  }
                        }
