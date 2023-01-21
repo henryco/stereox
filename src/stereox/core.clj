@@ -48,6 +48,11 @@
     :parse-fn #(-> (str %) .trim .toUpperCase .toCharArray seq vec)
     :validate [#(= 4 (count %)) "Must be 4 chars codec code, eg. MJPG"]]
 
+   ["-z" "--buffer-size NUMBER" "Buffer size (frames)"
+    :default 2
+    :parse-fn #(Integer/parseInt %)
+    :validate [#(<= 0 %) "Must be a positive integer"]]
+
    ["-f" "--fps FPS" "Camera FPS"
     :default 30
     :parse-fn #(Integer/parseInt %)

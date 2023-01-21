@@ -12,9 +12,14 @@
 
 (OpenCV/loadShared)
 
+(def ^:private *window
+  (atom {:width  nil
+         :height nil}))
+
 (def ^:private *state
   (atom {:title  "StereoX calibration"
          :alive  true
+         :scale  1.
          :camera {:viewport {:width 0 :height 0 :min-x 0 :min-y 0}
                   :capture  ^VideoCapture []
                   :image    ^Image []
@@ -28,7 +33,7 @@
   (if (not (.exists dir))
     (.mkdir dir)))
 
-(defn init-camera [ids width height codec gain gamma brightness fps exposure]
+(defn init-camera [ids width height codec gain gamma brightness fps exposure buffer]
   ; setup Image canvas settings
   (swap! *state assoc-in [:camera :viewport]
          {:width width :height height :min-x 0 :min-y 0})
@@ -40,19 +45,20 @@
                                (-> [Videoio/CAP_PROP_FOURCC (create-codec codec)
                                     Videoio/CAP_PROP_FRAME_WIDTH width
                                     Videoio/CAP_PROP_FRAME_HEIGHT height
+                                    Videoio/CAP_PROP_BUFFERSIZE buffer
 
-                                    (if (not (nil? exposure))
+                                    (if (some? exposure)
                                       [Videoio/CAP_PROP_AUTO_EXPOSURE 1
                                        Videoio/CAP_PROP_EXPOSURE exposure]
                                       [Videoio/CAP_PROP_AUTO_EXPOSURE 3])
 
-                                    (if (not (nil? brightness))
+                                    (if (some? brightness)
                                       [Videoio/CAP_PROP_BRIGHTNESS brightness] [])
 
-                                    (if (not (nil? gamma))
+                                    (if (some? gamma)
                                       [Videoio/CAP_PROP_GAMMA gamma] [])
 
-                                    (if (not (nil? gain))
+                                    (if (some? gain)
                                       [Videoio/CAP_PROP_GAIN gain] [])
 
                                     Videoio/CAP_PROP_FPS fps]
@@ -94,29 +100,53 @@
     (catch Exception e (.printStackTrace e))
     (finally (System/exit 0))))
 
-(defn render-images [{:keys [camera]}]
+(defn on-win-change [{:keys [width height]}]
+  (let [w (-> @*state :camera :viewport :width)
+        h (-> @*state :camera :viewport :height)
+        ww (-> @*window :width)
+        hh (-> @*window :height)
+        r (/ w h)
+        ]
+    (if (and (some? ww) (some? hh))
+      (println ww ":" hh)
+      ;TODO
+      ))
+  )
+
+(defn on-win-height-change [v]
+  (swap! *window assoc :height v)
+  (on-win-change {:height v}))
+
+(defn on-win-width-change [v]
+  (swap! *window assoc :width v)
+  (on-win-change {:width v}))
+
+(defn render-images [{:keys [camera scale]}]
   {:fx/type    :h-box
-   :min-width  (-> camera :viewport :width (* 2))
-   :min-height (-> camera :viewport :height)
+   :min-width  (-> camera :viewport :width (* 2 scale))
+   :min-height (-> camera :viewport :height (* scale))
    :children   (-> #(merge {:fx/type        :image-view
                             :viewport       (:viewport camera)
                             :preserve-ratio true
+                            :fit-height     (-> camera :viewport :height (* scale))
                             :image          %})
-                   (map (filter #(not (nil? %))
+                   (map (filter #(some? %)
                                 (:image camera))))
    })
 
 (defn root [state]
-  {:fx/type          :stage
-   :showing          true
-   :resizable        false
-   :title            (:title state)
-   :on-close-request shutdown
-   :scene            {:fx/type :scene
-                      :root    {:fx/type  :v-box
-                                :children [(merge state {:fx/type render-images})]
-                                }
-                      }
+  {:fx/type           :stage
+   :showing           true
+   :resizable         true
+   :title             (:title state)
+   :on-close-request  shutdown
+   :on-height-changed on-win-height-change
+   :on-width-changed  on-win-width-change
+   :scene             {:fx/type :scene
+                       :root    {:fx/type  :v-box
+                                 :children [(merge state {:fx/type render-images})]
+                                 }
+                       }
    })
 
 (def ^:private renderer
@@ -135,10 +165,11 @@
                            brightness
                            square-size
                            output-folder
+                           buffer-size
                            camera-id] :as all}]
   (println (pr-str all))
   (prep-dirs output-folder)
-  (init-camera camera-id width height codec gain gamma brightness fps exposure)
+  (init-camera camera-id width height codec gain gamma brightness fps exposure buffer-size)
 
   ;; Convenient way to add watch to an atom + immediately render app
   (fx/mount-renderer *state renderer)
