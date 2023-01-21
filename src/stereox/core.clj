@@ -31,7 +31,7 @@
    ["-i" "--camera-id ID..." "Camera ID (one or more)"
     :multi true
     :missing "Must be at least one camera ID"
-    :update-fn conj]
+    :update-fn #(conj (vec %1) %2)]
 
    ["-w" "--width WIDTH" "Frame width in PX"
     :default 640
@@ -45,6 +45,7 @@
 
    [nil "--codec CODEC" "Camera output codec"
     :default [\Y \U \Y \V]
+    :default-desc "YUYV"
     :parse-fn #(-> (str %) .trim .toUpperCase .toCharArray seq vec)
     :validate [#(= 4 (count %)) "Must be 4 chars codec code, eg. MJPG"]]
 
@@ -60,21 +61,25 @@
 
    ["-e" "--exposure EXPOSURE" "Camera exposure"
     :default nil
+    :default-desc ""
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
    ["-g" "--gain GAIN" "Camera gain"
     :default nil
+    :default-desc ""
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
    ["-m" "--gamma GAMMA" "Camera gamma"
     :default nil
+    :default-desc ""
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
    ["-b" "--brightness BRIGHTNESS" "Camera brightness"
     :default nil
+    :default-desc ""
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
@@ -110,12 +115,9 @@
       :else
       {:options options})))
 
-(defn camera-ops-to-vec [& {:keys [camera-id] :as options}]
-  (merge options {:camera-id (vec camera-id)}))
-
 (defn -main [& args]
   (let [{:keys [options exit-message ok?]} (validate-args args)]
     (if exit-message
       (exit (if ok? 0 1) exit-message)
-      (cbr/calibrate (camera-ops-to-vec options))
+      (cbr/calibrate options)
       )))
