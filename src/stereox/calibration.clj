@@ -124,7 +124,8 @@
 
 (defn render-images [{:keys [camera scale]}]
   {:fx/type    :h-box
-   :style      {:-fx-background-color :black}
+   :style      {:-fx-background-color :black
+                :-fx-alignment        :center}
    :min-width  (-> camera :viewport :width (* 2 scale))
    :min-height (-> camera :viewport :height (* scale))
    :children   (-> #(merge {:fx/type        :image-view
@@ -146,7 +147,8 @@
    :on-width-changed  on-win-width-change
    :scene             {:fx/type :scene
                        :root    {:fx/type  :v-box
-                                 :style   {:-fx-background-color :black}
+                                 :style    {:-fx-background-color :black
+                                            :-fx-alignment        :center}
                                  :children [(merge state {:fx/type render-images})]
                                  }
                        }
