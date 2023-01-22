@@ -12,12 +12,11 @@
 
 (OpenCV/loadShared)
 
-(def ^:private *thread
-  (atom {:alive true}))
-
 (def ^:private *window
-  (atom {:width  nil
-         :height nil}))
+  (atom {:alive true
+         :width  nil
+         :height nil
+         }))
 
 (def ^:private *state
   (atom {:title  "StereoX calibration"
@@ -113,13 +112,13 @@
   (.start
     (proxy [AnimationTimer] []
       (handle [_]
-        (if (:alive @*thread)
+        (if (:alive @*window)
           (func))
         ))))
 
 (defn shutdown [& {:keys [code]}]
   (try
-    (swap! *thread assoc :alive false)
+    (swap! *window assoc :alive false)
     (run! #(.release %) (-> @*state :camera :capture))
     (catch Exception e (.printStackTrace e)))
   (try
