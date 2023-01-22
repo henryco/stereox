@@ -13,16 +13,21 @@
 (OpenCV/loadShared)
 
 (def ^:private *window
-  (atom {:alive true
+  (atom {:alive  true
          :width  nil
          :height nil
+         }))
+
+(def ^:private *io
+  (atom {:capture ^VideoCapture []
+         :width   nil
+         :height  nil
          }))
 
 (def ^:private *state
   (atom {:title  "StereoX calibration"
          :scale  1.
          :camera {:viewport {:width 0 :height 0 :min-x 0 :min-y 0}
-                  :capture  ^VideoCapture []
                   :image    ^Image []
                   }
          }))
@@ -41,8 +46,11 @@
   ; setup Image canvas settings
   (swap! *state assoc-in [:camera :viewport]
          {:width width :height height :min-x 0 :min-y 0})
+  ; setup io config
+  (swap! *io assoc :width width)
+  (swap! *io assoc :height height)
   ; setup Video capture vector
-  (swap! *state assoc-in [:camera :capture]
+  (swap! *io assoc :capture
          (map #(let [capture (VideoCapture.
                                (Integer/parseInt %)
                                Videoio/CAP_ANY
@@ -83,7 +91,7 @@
     (Image. (ByteArrayInputStream. (.toArray bytes)))))
 
 (defn grab-capture []
-  (let [captures (-> @*state :camera :capture)
+  (let [captures (-> @*io :capture)
         grabbed (-> #(future
                        (.grab ^VideoCapture %)
                        ) (map captures))
@@ -119,7 +127,7 @@
 (defn shutdown [& {:keys [code]}]
   (try
     (swap! *window assoc :alive false)
-    (run! #(.release %) (-> @*state :camera :capture))
+    (run! #(.release %) (-> @*io :capture))
     (catch Exception e (.printStackTrace e)))
   (try
     (Platform/exit)
