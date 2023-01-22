@@ -1,7 +1,7 @@
 (ns stereox.calibration
   (:require [cljfx.api :as fx])
   (:import (java.io ByteArrayInputStream File)
-           (java.util.concurrent ExecutorService Executors)
+           (java.util.concurrent ExecutorService Executors TimeUnit)
            (javafx.animation AnimationTimer)
            (javafx.application Platform)
            (javafx.scene.image Image)
@@ -32,6 +32,9 @@
 
 (defn create-codec [[a b c d]]
   (VideoWriter/fourcc a b c d))
+
+(defn vecs-to-mat ^MatOfInt [v]
+  (-> v (flatten) (vec) (int-array) (MatOfInt.)))
 
 (defn prep-dirs [^File dir]
   (if (not (.exists dir))
@@ -66,7 +69,8 @@
                                       [Videoio/CAP_PROP_GAIN gain] [])
 
                                     Videoio/CAP_PROP_FPS fps]
-                                   (flatten) (vec) (int-array) (MatOfInt.)))]
+                                   (vecs-to-mat))
+                               )]
                  (println "FPS:" (.get capture Videoio/CAP_PROP_FPS))
                  capture)                                   ; return initialized video capture
               ids)                                          ; return captures for every id
@@ -75,7 +79,10 @@
 
 (defn mat2image ^Image [^Mat mat]
   (let [bytes (MatOfByte.)]
-    (Imgcodecs/imencode ".png" mat bytes)
+    (Imgcodecs/imencode ".png" mat bytes
+                        (-> [Imgcodecs/IMWRITE_PNG_COMPRESSION 0
+                             Imgcodecs/IMWRITE_PNG_STRATEGY Imgcodecs/IMWRITE_PNG_STRATEGY_FIXED
+                             ] (vecs-to-mat)))
     (Image. (ByteArrayInputStream. (.toArray bytes)))))
 
 (defn grab-capture []
@@ -118,14 +125,15 @@
       nil)                                                  ; GRABBED:  FALSE -> NIL
     ))
 
-
 (def ^:private timer
   (proxy [AnimationTimer] []
-    (handle [_]
+    (handle [time_ns]
       (if (:alive @*state)
         (let [captured (grab-capture)]
           (if (some? captured)
-            (swap! *state assoc-in [:camera :image] captured))
+            (swap! *state assoc-in [:camera :image] captured)
+            )
+          ;(println time_ns)
           )
         ;TODO: MORE
         ))))
@@ -134,6 +142,9 @@
   (try
     (swap! *state assoc :alive false)
     (run! #(.release %) (:capture (:camera @*state)))
+    (doto (:service @*executor)
+      (.shutdown)
+      (.awaitTermination 1 TimeUnit/SECONDS))
     (catch Exception e (.printStackTrace e)))
   (try
     (Platform/exit)
@@ -199,8 +210,7 @@
     :middleware (fx/wrap-map-desc assoc :fx/type root)))
 
 (defn pre-init [camera-id]
-  ;(swap! *executor assoc :service (Executors/newFixedThreadPool (count camera-id)))
-  (swap! *executor assoc :service (Executors/newFixedThreadPool (-> camera-id (count) (* 2))))
+  (swap! *executor assoc :service (Executors/newFixedThreadPool (-> camera-id (count) (+ 1))))
   (let [status (-> #(future (str (System/currentTimeMillis) " [" % "]: OK")) (map camera-id))]
     (run! #(println @%) status)))
 
