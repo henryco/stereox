@@ -109,21 +109,13 @@
               matrices))
     nil))
 
-(defn quasi-fx-render []
-  (let [captured (grab-capture)
-        images (image-adapt captured)]
-    (if (some? images)
-      (swap! *state assoc-in [:camera :image] images))
-    ; TODO: MORE
-    )
-  )
-
-(def ^:private timer
-  (proxy [AnimationTimer] []
-    (handle [_]
-      (if (:alive @*thread)
-        (quasi-fx-render))
-      )))
+(defn start-ui-loop [func]
+  (.start
+    (proxy [AnimationTimer] []
+      (handle [_]
+        (if (:alive @*thread)
+          (func))
+        ))))
 
 (defn shutdown [& {:keys [code]}]
   (try
@@ -193,23 +185,14 @@
   (fx/create-renderer
     :middleware (fx/wrap-map-desc assoc :fx/type root)))
 
-(defn exec-measure [func]
-  (let [t0 (System/nanoTime)]
-    (func)
-    (- (System/nanoTime) t0)))
-
-(defn init-pooler [fps func]
-  (.start
-    (Thread.
-      ^Runnable
-      (fn []
-        (while (:alive @*thread)
-          (let [passed (exec-measure func)
-                should (/ 1000000000 fps)
-                diff (- should passed)]
-            (if (< 0 diff)
-              (Thread/sleep 0 (- diff 100)))
-            ))))))
+(defn main-cb []
+  (let [captured (grab-capture)
+        images (image-adapt captured)]
+    (if (some? images)
+      (swap! *state assoc-in [:camera :image] images))
+    ; TODO: MORE
+    )
+  )
 
 (defn init-executor-pools [camera-id]
   (let [status (-> #(future (str (System/currentTimeMillis) " [" % "]: OK")) (map camera-id))]
@@ -233,10 +216,9 @@
   (prep-dirs output-folder)
   (init-executor-pools camera-id)
   (init-camera camera-id width height codec gain gamma brightness fps exposure buffer-size)
-  ;(init-pooler fps quasi-fx-render)
 
   ;; Convenient way to add watch to an atom + immediately render app
   (fx/mount-renderer *state renderer)
 
-  (.start timer)
+  (start-ui-loop main-cb)
   )
