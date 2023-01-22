@@ -74,24 +74,14 @@
     (Imgcodecs/imencode ".png" mat bytes)
     (Image. (ByteArrayInputStream. (.toArray bytes)))))
 
-(defn grab-capture2 []
-  (let [captures (-> @*state :camera :capture)]
-    (run! #(.grab ^VideoCapture %) captures)
-    (-> #(let [mat (Mat.)]
-           (.retrieve ^VideoCapture % mat)
-           (mat2image mat))
-        (map captures))))
-
 (defn grab-capture []
   (let [captures (-> @*state :camera :capture)
         grabbed (-> #(future
-                       ; TODO LOG
                        (.grab ^VideoCapture %)
                        ) (map captures))
         ]
     (if (every? #(true? @%) grabbed)
       (let [results (-> #(future
-                           ; TODO LOG
                            (let [mat (Mat.)]
                              (if (.retrieve ^VideoCapture % mat)
                                (mat2image mat)
@@ -182,24 +172,9 @@
   (fx/create-renderer
     :middleware (fx/wrap-map-desc assoc :fx/type root)))
 
-(defn init-scrapers [camera-id]
-  (-> (fn [id]
-        (Thread.
-          ^Runnable
-          (fn []
-            (while (:alive @*state)
-              (try
-                ; TODO GRAB
-
-                (Thread/sleep 10)
-                (catch Exception e
-                  (.printStackTrace e)
-                  (shutdown 42)))
-              ))
-          )
-        )
-      (map camera-id))
-  )
+(defn pre-init [camera-id]
+  (let [status (-> #(future (str (System/currentTimeMillis) " [" % "]: OK")) (map camera-id))]
+    (run! #(println @%) status)))
 
 (defn calibrate [& {:keys [rows
                            columns
@@ -218,7 +193,8 @@
   (println (pr-str all))
   (prep-dirs output-folder)
   (init-camera camera-id width height codec gain gamma brightness fps exposure buffer-size)
-  ;(init-scrapers camera-id) ; TODO
+  (pre-init camera-id)
+  ; TODO
 
   ;; Convenient way to add watch to an atom + immediately render app
   (fx/mount-renderer *state renderer)
