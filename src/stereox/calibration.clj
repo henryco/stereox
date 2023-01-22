@@ -74,7 +74,7 @@
     (Imgcodecs/imencode ".png" mat bytes)
     (Image. (ByteArrayInputStream. (.toArray bytes)))))
 
-(defn grab-capture []
+(defn grab-capture2 []
   (let [captures (-> @*state :camera :capture)]
     (run! #(.grab ^VideoCapture %) captures)
     (-> #(let [mat (Mat.)]
@@ -82,15 +82,39 @@
            (mat2image mat))
         (map captures))))
 
+(defn grab-capture []
+  (let [captures (-> @*state :camera :capture)
+        grabbed (-> #(future
+                       ; TODO LOG
+                       (.grab ^VideoCapture %)
+                       ) (map captures))
+        ]
+    (if (every? #(true? @%) grabbed)
+      (let [results (-> #(future
+                           ; TODO LOG
+                           (let [mat (Mat.)]
+                             (if (.retrieve ^VideoCapture % mat)
+                               (mat2image mat)
+                               nil)))
+                        (map captures))]
+        (if (every? #(some? @%) results)
+          (map #(deref %) results)                          ; GRABBED : RETRIEVE: TRUE -> RESULTS
+          nil))                                             ; RETRIEVE: FALSE -> NIL
+      nil)                                                  ; GRABBED:  FALSE -> NIL
+    ))
+
 (def ^:private timer
   (proxy [AnimationTimer] []
     (handle [_]
       (if (:alive @*state)
-        (swap! *state assoc-in [:camera :image] (grab-capture))
+        (let [captured (grab-capture)]
+          (if (some? captured)
+            (swap! *state assoc-in [:camera :image] captured))
+          )
         ;TODO: MORE
         ))))
 
-(defn shutdown [& _]
+(defn shutdown [& {:keys [code]}]
   (try
     (swap! *state assoc :alive false)
     (run! #(.release %) (:capture (:camera @*state)))
@@ -98,7 +122,7 @@
   (try
     (Platform/exit)
     (catch Exception e (.printStackTrace e))
-    (finally (System/exit 0))))
+    (finally (System/exit (if (some? code) code 0)))))
 
 (defn on-win-change []
   (let [s (-> @*state :scale)
@@ -158,6 +182,25 @@
   (fx/create-renderer
     :middleware (fx/wrap-map-desc assoc :fx/type root)))
 
+(defn init-scrapers [camera-id]
+  (-> (fn [id]
+        (Thread.
+          ^Runnable
+          (fn []
+            (while (:alive @*state)
+              (try
+                ; TODO GRAB
+
+                (Thread/sleep 10)
+                (catch Exception e
+                  (.printStackTrace e)
+                  (shutdown 42)))
+              ))
+          )
+        )
+      (map camera-id))
+  )
+
 (defn calibrate [& {:keys [rows
                            columns
                            width
@@ -175,6 +218,7 @@
   (println (pr-str all))
   (prep-dirs output-folder)
   (init-camera camera-id width height codec gain gamma brightness fps exposure buffer-size)
+  ;(init-scrapers camera-id) ; TODO
 
   ;; Convenient way to add watch to an atom + immediately render app
   (fx/mount-renderer *state renderer)
