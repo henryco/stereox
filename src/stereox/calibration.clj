@@ -1,7 +1,6 @@
 (ns stereox.calibration
   (:require [cljfx.api :as fx])
   (:import (java.io ByteArrayInputStream File)
-           (java.util.concurrent ExecutorService Executors TimeUnit)
            (javafx.animation AnimationTimer)
            (javafx.application Platform)
            (javafx.scene.image Image)
@@ -16,9 +15,6 @@
 (def ^:private *window
   (atom {:width  nil
          :height nil}))
-
-(def ^:private *executor
-  (atom {:service nil}))
 
 (def ^:private *state
   (atom {:title  "StereoX calibration"
@@ -95,45 +91,33 @@
       (let [results (-> #(future
                            (let [mat (Mat.)]
                              (if (.retrieve ^VideoCapture % mat)
-                               (mat2image mat)
-                               nil)))
-                        (map captures))]
+                               mat
+                               nil)
+                             )) (map captures))]
         (if (every? #(some? @%) results)
           (map #(deref %) results)                          ; GRABBED & RETRIEVE: TRUE -> RESULTS
           nil))                                             ; RETRIEVE: FALSE -> NIL
       nil)                                                  ; GRABBED:  FALSE -> NIL
     ))
 
-(defn grab-capture2 []
-  (let [captures (-> @*state :camera :capture)
-        service (-> @*executor :service)
-        grabbed (-> #(.submit ^ExecutorService service
-                              ^Callable (fn [] (.grab ^VideoCapture %)))
-                    (map captures))
-        ]
-    (if (every? #(true? @%) grabbed)
-      (let [results (-> #(.submit ^ExecutorService service
-                                  ^Callable (fn []
-                                              (let [mat (Mat.)]
-                                                (if (.retrieve ^VideoCapture % mat)
-                                                  (mat2image mat)
-                                                  nil))))
-                        (map captures))]
-        (if (every? #(some? @%) results)
-          (map #(deref %) results)                          ; GRABBED & RETRIEVE: TRUE -> RESULTS
-          nil))                                             ; RETRIEVE: FALSE -> NIL
-      nil)                                                  ; GRABBED:  FALSE -> NIL
-    ))
+(defn image-adapt [matrices]
+  (if (some? matrices)
+    (map #(deref %)
+         (map #(future (mat2image %))
+              matrices))
+    nil))
 
 (def ^:private timer
   (proxy [AnimationTimer] []
     (handle [time_ns]
       (if (:alive @*state)
-        (let [captured (grab-capture)]
-          (if (some? captured)
-            (swap! *state assoc-in [:camera :image] captured)
+        (let [captured (grab-capture)
+              images (image-adapt captured)
+              ]
+          (if (some? images)
+            (swap! *state assoc-in [:camera :image] images)
             )
-          ;(println time_ns)
+
           )
         ;TODO: MORE
         ))))
@@ -142,9 +126,6 @@
   (try
     (swap! *state assoc :alive false)
     (run! #(.release %) (:capture (:camera @*state)))
-    (doto (:service @*executor)
-      (.shutdown)
-      (.awaitTermination 1 TimeUnit/SECONDS))
     (catch Exception e (.printStackTrace e)))
   (try
     (Platform/exit)
@@ -209,8 +190,7 @@
   (fx/create-renderer
     :middleware (fx/wrap-map-desc assoc :fx/type root)))
 
-(defn pre-init [camera-id]
-  (swap! *executor assoc :service (Executors/newFixedThreadPool (-> camera-id (count) (+ 1))))
+(defn init-executor-pools [camera-id]
   (let [status (-> #(future (str (System/currentTimeMillis) " [" % "]: OK")) (map camera-id))]
     (run! #(println @%) status)))
 
@@ -230,8 +210,9 @@
                            camera-id] :as all}]
   (println (pr-str all))
   (prep-dirs output-folder)
+  (init-executor-pools camera-id)
   (init-camera camera-id width height codec gain gamma brightness fps exposure buffer-size)
-  (pre-init camera-id)
+
   ; TODO
 
   ;; Convenient way to add watch to an atom + immediately render app
