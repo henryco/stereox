@@ -1,6 +1,7 @@
 (ns stereox.calibration
   (:require [cljfx.api :as fx])
   (:import (java.io ByteArrayInputStream File)
+           (java.util.concurrent ExecutorService Executors)
            (javafx.animation AnimationTimer)
            (javafx.application Platform)
            (javafx.scene.image Image)
@@ -15,6 +16,9 @@
 (def ^:private *window
   (atom {:width  nil
          :height nil}))
+
+(def ^:private *executor
+  (atom {:service nil}))
 
 (def ^:private *state
   (atom {:title  "StereoX calibration"
@@ -88,10 +92,32 @@
                                nil)))
                         (map captures))]
         (if (every? #(some? @%) results)
-          (map #(deref %) results)                          ; GRABBED : RETRIEVE: TRUE -> RESULTS
+          (map #(deref %) results)                          ; GRABBED & RETRIEVE: TRUE -> RESULTS
           nil))                                             ; RETRIEVE: FALSE -> NIL
       nil)                                                  ; GRABBED:  FALSE -> NIL
     ))
+
+(defn grab-capture2 []
+  (let [captures (-> @*state :camera :capture)
+        service (-> @*executor :service)
+        grabbed (-> #(.submit ^ExecutorService service
+                              ^Callable (fn [] (.grab ^VideoCapture %)))
+                    (map captures))
+        ]
+    (if (every? #(true? @%) grabbed)
+      (let [results (-> #(.submit ^ExecutorService service
+                                  ^Callable (fn []
+                                              (let [mat (Mat.)]
+                                                (if (.retrieve ^VideoCapture % mat)
+                                                  (mat2image mat)
+                                                  nil))))
+                        (map captures))]
+        (if (every? #(some? @%) results)
+          (map #(deref %) results)                          ; GRABBED & RETRIEVE: TRUE -> RESULTS
+          nil))                                             ; RETRIEVE: FALSE -> NIL
+      nil)                                                  ; GRABBED:  FALSE -> NIL
+    ))
+
 
 (def ^:private timer
   (proxy [AnimationTimer] []
@@ -173,6 +199,8 @@
     :middleware (fx/wrap-map-desc assoc :fx/type root)))
 
 (defn pre-init [camera-id]
+  ;(swap! *executor assoc :service (Executors/newFixedThreadPool (count camera-id)))
+  (swap! *executor assoc :service (Executors/newFixedThreadPool (-> camera-id (count) (* 2))))
   (let [status (-> #(future (str (System/currentTimeMillis) " [" % "]: OK")) (map camera-id))]
     (run! #(println @%) status)))
 
@@ -199,4 +227,5 @@
   ;; Convenient way to add watch to an atom + immediately render app
   (fx/mount-renderer *state renderer)
 
-  (.start timer))
+  (.start timer)
+  )
