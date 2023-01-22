@@ -12,13 +12,15 @@
 
 (OpenCV/loadShared)
 
+(def ^:private *thread
+  (atom {:alive true}))
+
 (def ^:private *window
   (atom {:width  nil
          :height nil}))
 
 (def ^:private *state
   (atom {:title  "StereoX calibration"
-         :alive  true
          :scale  1.
          :camera {:viewport {:width 0 :height 0 :min-x 0 :min-y 0}
                   :capture  ^VideoCapture []
@@ -107,25 +109,26 @@
               matrices))
     nil))
 
+(defn quasi-fx-render []
+  (let [captured (grab-capture)
+        images (image-adapt captured)]
+    (if (some? images)
+      (swap! *state assoc-in [:camera :image] images))
+    ; TODO: MORE
+    )
+  )
+
 (def ^:private timer
   (proxy [AnimationTimer] []
-    (handle [time_ns]
-      (if (:alive @*state)
-        (let [captured (grab-capture)
-              images (image-adapt captured)
-              ]
-          (if (some? images)
-            (swap! *state assoc-in [:camera :image] images)
-            )
-
-          )
-        ;TODO: MORE
-        ))))
+    (handle [_]
+      (if (:alive @*thread)
+        (quasi-fx-render))
+      )))
 
 (defn shutdown [& {:keys [code]}]
   (try
-    (swap! *state assoc :alive false)
-    (run! #(.release %) (:capture (:camera @*state)))
+    (swap! *thread assoc :alive false)
+    (run! #(.release %) (-> @*state :camera :capture))
     (catch Exception e (.printStackTrace e)))
   (try
     (Platform/exit)
@@ -190,6 +193,24 @@
   (fx/create-renderer
     :middleware (fx/wrap-map-desc assoc :fx/type root)))
 
+(defn exec-measure [func]
+  (let [t0 (System/nanoTime)]
+    (func)
+    (- (System/nanoTime) t0)))
+
+(defn init-pooler [fps func]
+  (.start
+    (Thread.
+      ^Runnable
+      (fn []
+        (while (:alive @*thread)
+          (let [passed (exec-measure func)
+                should (/ 1000000000 fps)
+                diff (- should passed)]
+            (if (< 0 diff)
+              (Thread/sleep 0 (- diff 100)))
+            ))))))
+
 (defn init-executor-pools [camera-id]
   (let [status (-> #(future (str (System/currentTimeMillis) " [" % "]: OK")) (map camera-id))]
     (run! #(println @%) status)))
@@ -212,8 +233,7 @@
   (prep-dirs output-folder)
   (init-executor-pools camera-id)
   (init-camera camera-id width height codec gain gamma brightness fps exposure buffer-size)
-
-  ; TODO
+  ;(init-pooler fps quasi-fx-render)
 
   ;; Convenient way to add watch to an atom + immediately render app
   (fx/mount-renderer *state renderer)
