@@ -1,4 +1,4 @@
-(ns stereox.calibration
+(ns stereox.calibration.calibration
   (:require [cljfx.api :as fx]
             [stereox.camera.stereo-camera :as camera])
   (:import (java.io ByteArrayInputStream File)
