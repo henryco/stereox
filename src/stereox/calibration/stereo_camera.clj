@@ -29,12 +29,12 @@
 (defprotocol IStereoCamera
   "Interface for Stereo pair camera"
 
-  (camera-grab []
+  (capture [_]
     "Returns org.opencv.core.Mat[] or nil.
     Asynchronously grab and retrieve data from both cameras.
     BLOCKING IO OPERATION")
 
-  (release []
+  (release [_]
     "Cleanup allocated resources"))
 
 (defn create-codec [^chars [^char a ^char b ^char c ^char d]]
@@ -61,6 +61,9 @@
   {:static true
    :tag    CameraIO}
   [^CameraProperties properties]
+  (if (or (nil? (:ids properties))
+          (= 0 (count (:ids properties))))
+    (throw (Exception. "Capture identifiers not provided!")))
   (init-executor-pools (:ids properties))
   (map->CameraIO
     {:height  (:height properties)
@@ -71,7 +74,9 @@
                                     (-> [Videoio/CAP_PROP_FOURCC (create-codec (:codec properties))
                                          Videoio/CAP_PROP_FRAME_WIDTH (:width properties)
                                          Videoio/CAP_PROP_FRAME_HEIGHT (:height properties)
-                                         Videoio/CAP_PROP_BUFFERSIZE (:buffer properties)
+
+                                         (if (some? (:buffer properties))
+                                           [Videoio/CAP_PROP_BUFFERSIZE (:buffer properties)] [])
 
                                          (if (some? (:exposure properties))
                                            [Videoio/CAP_PROP_AUTO_EXPOSURE 1
@@ -121,9 +126,9 @@
 
 (defrecord StereoCamera [^Atom *io]
   IStereoCamera
-  (camera-grab []
+  (capture [_]
     (grab-capture (:capture @*io)))
-  (release []
+  (release [_]
     (run! #(.release %) (:capture @*io))))
 
 (defn create
@@ -132,6 +137,7 @@
    :tag    StereoCamera}
   [^CameraProperties properties]
   ; basically just (StereoCamera. (atom (into {} io))
+  (println (pr-str properties))                             ; TODO REMOVE THIS LINE
   (StereoCamera.
     (atom
       (cw/postwalk

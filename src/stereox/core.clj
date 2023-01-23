@@ -29,6 +29,7 @@
     :validate [#(< 3 % 256) "Must be a number between 3 and 256"]]
 
    ["-i" "--camera-id ID..." "Camera ID (one or more)"
+    :id :ids
     :multi true
     :missing "Must be at least one camera ID"
     :update-fn #(conj (vec %1) %2)]
@@ -50,6 +51,7 @@
     :validate [#(= 4 (count %)) "Must be 4 chars codec code, eg. MJPG"]]
 
    ["-z" "--buffer-size NUMBER" "Buffer size (frames)"
+    :id :buffer
     :default 2
     :parse-fn #(Integer/parseInt %)
     :validate [#(<= 0 %) "Must be a positive integer"]]

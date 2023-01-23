@@ -1,16 +1,11 @@
 (ns stereox.calibration
-  (:require [cljfx.api :as fx])
+  (:require [cljfx.api :as fx]
+            [stereox.calibration.stereo-camera :as camera])
   (:import (java.io ByteArrayInputStream File)
            (javafx.animation AnimationTimer)
            (javafx.application Platform)
-           (javafx.scene.image Image)
-           (nu.pattern OpenCV)
-           (org.opencv.core Mat MatOfByte MatOfInt)
-           (org.opencv.imgcodecs Imgcodecs)
-           (org.opencv.videoio VideoCapture VideoWriter Videoio))
+           (javafx.scene.image Image))
   (:gen-class))
-
-(OpenCV/loadShared)
 
 (def ^:private *window
   (atom {:alive  true
@@ -18,11 +13,8 @@
          :height nil
          }))
 
-(def ^:private *io
-  (atom {:capture ^VideoCapture []
-         :width   nil
-         :height  nil
-         }))
+(def ^:private *camera
+  (atom nil))
 
 (def ^:private *state
   (atom {:title  "StereoX calibration"
@@ -32,102 +24,24 @@
                   }
          }))
 
-(defn create-codec [[a b c d]]
-  (VideoWriter/fourcc a b c d))
-
-(defn vecs-to-mat ^MatOfInt [v]
-  (-> v (flatten) (vec) (int-array) (MatOfInt.)))
-
 (defn prep-dirs [^File dir]
   (if (not (.exists dir))
     (.mkdir dir)))
 
-(defn init-camera [ids width height codec gain gamma brightness fps exposure buffer]
-  ; setup Image canvas settings
-  (swap! *state assoc-in [:camera :viewport]
-         {:width width :height height :min-x 0 :min-y 0})
-  ; setup io config
-  (swap! *io assoc :width width)
-  (swap! *io assoc :height height)
-  ; setup Video capture vector
-  (swap! *io assoc :capture
-         (map #(let [capture (VideoCapture.
-                               (Integer/parseInt %)
-                               Videoio/CAP_ANY
-                               (-> [Videoio/CAP_PROP_FOURCC (create-codec codec)
-                                    Videoio/CAP_PROP_FRAME_WIDTH width
-                                    Videoio/CAP_PROP_FRAME_HEIGHT height
-                                    Videoio/CAP_PROP_BUFFERSIZE buffer
-
-                                    (if (some? exposure)
-                                      [Videoio/CAP_PROP_AUTO_EXPOSURE 1
-                                       Videoio/CAP_PROP_EXPOSURE exposure]
-                                      [Videoio/CAP_PROP_AUTO_EXPOSURE 3])
-
-                                    (if (some? brightness)
-                                      [Videoio/CAP_PROP_BRIGHTNESS brightness] [])
-
-                                    (if (some? gamma)
-                                      [Videoio/CAP_PROP_GAMMA gamma] [])
-
-                                    (if (some? gain)
-                                      [Videoio/CAP_PROP_GAIN gain] [])
-
-                                    Videoio/CAP_PROP_FPS fps]
-                                   (vecs-to-mat))
-                               )]
-                 (println "FPS:" (.get capture Videoio/CAP_PROP_FPS))
-                 capture)                                   ; return initialized video capture
-              ids)                                          ; return captures for every id
-         )
-  )
-
-(defn mat2image ^Image [^Mat mat]
-  (let [bytes (MatOfByte.)]
-    (Imgcodecs/imencode ".png" mat bytes
-                        (-> [Imgcodecs/IMWRITE_PNG_COMPRESSION 0
-                             Imgcodecs/IMWRITE_PNG_STRATEGY Imgcodecs/IMWRITE_PNG_STRATEGY_FIXED
-                             ] (vecs-to-mat)))
-    (Image. (ByteArrayInputStream. (.toArray bytes)))))
-
-(defn grab-capture []
-  (let [captures (-> @*io :capture)
-        grabbed (-> #(future
-                       (.grab ^VideoCapture %)
-                       ) (map captures))
-        ]
-    (if (every? #(true? @%) grabbed)
-      (let [results (-> #(future
-                           (let [mat (Mat.)]
-                             (if (.retrieve ^VideoCapture % mat)
-                               mat
-                               nil)
-                             )) (map captures))]
-        (if (every? #(some? @%) results)
-          (map #(deref %) results)                          ; GRABBED & RETRIEVE: TRUE -> RESULTS
-          nil))                                             ; RETRIEVE: FALSE -> NIL
-      nil)                                                  ; GRABBED:  FALSE -> NIL
-    ))
-
 (defn image-adapt [matrices]
   (if (some? matrices)
     (map #(deref %)
-         (map #(future (mat2image %))
-              matrices))
+         (map #(future
+                 (-> (camera/mat-to-bytes %)
+                     (ByteArrayInputStream.)
+                     (Image.))
+                 ) matrices))
     nil))
-
-(defn start-ui-loop [func]
-  (.start
-    (proxy [AnimationTimer] []
-      (handle [_]
-        (if (:alive @*window)
-          (func))
-        ))))
 
 (defn shutdown [& {:keys [code]}]
   (try
     (swap! *window assoc :alive false)
-    (run! #(.release %) (-> @*io :capture))
+    (camera/release @*camera)
     (catch Exception e (.printStackTrace e)))
   (try
     (Platform/exit)
@@ -192,8 +106,16 @@
   (fx/create-renderer
     :middleware (fx/wrap-map-desc assoc :fx/type root)))
 
+(defn start-ui-loop [func]
+  (.start
+    (proxy [AnimationTimer] []
+      (handle [_]
+        (if (:alive @*window)
+          (func))
+        ))))
+
 (defn main-cb []
-  (let [captured (grab-capture)
+  (let [captured (camera/capture @*camera)
         images (image-adapt captured)]
     (if (some? images)
       (swap! *state assoc-in [:camera :image] images))
@@ -201,28 +123,15 @@
     )
   )
 
-(defn init-executor-pools [camera-id]
-  (let [status (-> #(future (str (System/currentTimeMillis) " [" % "]: OK")) (map camera-id))]
-    (run! #(println @%) status)))
-
-(defn calibrate [& {:keys [rows
-                           columns
-                           width
-                           height
-                           codec
-                           gamma
-                           exposure
-                           fps
-                           gain
-                           brightness
-                           square-size
-                           output-folder
-                           buffer-size
-                           camera-id] :as all}]
-  (println (pr-str all))
+(defn calibrate [& {:keys [output-folder width height] :as all}]
   (prep-dirs output-folder)
-  (init-executor-pools camera-id)
-  (init-camera camera-id width height codec gain gamma brightness fps exposure buffer-size)
+
+  ; setup camera
+  (reset! *camera (camera/create all))
+
+  ; setup javafx
+  (swap! *state assoc-in [:camera :viewport]
+         {:width width :height height :min-x 0 :min-y 0})
 
   ;; Convenient way to add watch to an atom + immediately render app
   (fx/mount-renderer *state renderer)
