@@ -1,6 +1,6 @@
 (ns stereox.calibration
   (:require [cljfx.api :as fx]
-            [stereox.calibration.stereo-camera :as camera])
+            [stereox.camera.stereo-camera :as camera])
   (:import (java.io ByteArrayInputStream File)
            (javafx.animation AnimationTimer)
            (javafx.application Platform)

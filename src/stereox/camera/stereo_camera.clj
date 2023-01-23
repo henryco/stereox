@@ -1,4 +1,4 @@
-(ns stereox.calibration.stereo-camera
+(ns stereox.camera.stereo-camera
   (:require [clojure.walk :as cw])
   (:import (clojure.lang Atom PersistentVector)
            (nu.pattern OpenCV)
