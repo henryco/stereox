@@ -131,29 +131,34 @@
    ^Boolean found
    ^MatOfPoint2f corners])
 
-(defn cvt-color [^Mat image ^Integer code]
-  (let [output (Mat.)]
-    (Imgproc/cvtColor image output code)
-    output))
+(defn img-copy
+  ([^Mat image ^Integer code]
+   (let [output (Mat.)]
+     (Imgproc/cvtColor image output code)
+     output))
+  ([^Mat image]
+   (let [output (Mat.)]
+     (.copyTo image
+              output)
+     output)))
 
 (defn find-squares ^CBData [^Mat image]
-  (let [output_image (cvt-color image
-                                Imgproc/COLOR_BGR2GRAY)
-        result_image (Mat.)
+  (let [buffer_result (img-copy image)
+        buffer_gray (img-copy image
+                              Imgproc/COLOR_BGR2GRAY)
         corners (MatOfPoint2f.)
-        flags (+ Calib3d/CALIB_CB_ADAPTIVE_THRESH
+        flags (+ Calib3d/CALIB_CB_FAST_CHECK
+                 ;Calib3d/CALIB_CB_ADAPTIVE_THRESH
                  Calib3d/CALIB_CB_NORMALIZE_IMAGE
-                 Calib3d/CALIB_CB_FAST_CHECK)
+                 0)
         pattern_size (Size. (- (:rows @*params) 1)
                             (- (:columns @*params) 1))
-        found (Calib3d/findChessboardCorners image
+        found (Calib3d/findChessboardCorners buffer_gray
                                              pattern_size
                                              corners
                                              flags)]
-    (.copyTo image
-             result_image)
     (if found
-      (Imgproc/cornerSubPix output_image
+      (Imgproc/cornerSubPix buffer_gray
                             corners
                             (Size. 11 11)
                             (Size. -1 -1)
@@ -161,12 +166,12 @@
                                               TermCriteria/COUNT)
                                            30
                                            0.1)))
-    (Calib3d/drawChessboardCorners result_image
+    (Calib3d/drawChessboardCorners buffer_result
                                    pattern_size
                                    corners
                                    found)
     (CBData. image
-             result_image
+             buffer_result
              found
              corners)))
 
