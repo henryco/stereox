@@ -132,6 +132,7 @@
    ^MatOfPoint2f corners])
 
 (defn img-copy
+  "Copy image matrix, optionally apply color change."
   ([^Mat image ^Integer code]
    (let [output (Mat.)]
      (Imgproc/cvtColor image output code)
