@@ -131,8 +131,13 @@
    ^Boolean found
    ^MatOfPoint2f corners])
 
+(defn cvt-color [^Mat image ^Integer code]
+  (let [output (Mat.)]
+    (Imgproc/cvtColor image output code)
+    output))
+
 (defn find-squares ^CBData [^Mat image]
-  (let [output_image (Mat.)
+  (let [output_image (cvt-color image Imgproc/COLOR_BGR2GRAY)
         corners (MatOfPoint2f.)
         flags (+ Calib3d/CALIB_CB_ADAPTIVE_THRESH
                  Calib3d/CALIB_CB_NORMALIZE_IMAGE
@@ -143,9 +148,6 @@
                                              pattern_size
                                              corners
                                              flags)]
-    ; TODO GRAYSCALE
-    (.copyTo image
-             output_image)
     (if found
       (Imgproc/cornerSubPix output_image
                             corners
