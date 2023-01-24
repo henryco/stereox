@@ -137,7 +137,9 @@
     output))
 
 (defn find-squares ^CBData [^Mat image]
-  (let [output_image (cvt-color image Imgproc/COLOR_BGR2GRAY)
+  (let [output_image (cvt-color image
+                                Imgproc/COLOR_BGR2GRAY)
+        result_image (Mat.)
         corners (MatOfPoint2f.)
         flags (+ Calib3d/CALIB_CB_ADAPTIVE_THRESH
                  Calib3d/CALIB_CB_NORMALIZE_IMAGE
@@ -148,6 +150,8 @@
                                              pattern_size
                                              corners
                                              flags)]
+    (.copyTo image
+             result_image)
     (if found
       (Imgproc/cornerSubPix output_image
                             corners
@@ -157,12 +161,12 @@
                                               TermCriteria/COUNT)
                                            30
                                            0.1)))
-    (Calib3d/drawChessboardCorners output_image
+    (Calib3d/drawChessboardCorners result_image
                                    pattern_size
                                    corners
                                    found)
     (CBData. image
-             output_image
+             result_image
              found
              corners)))
 
