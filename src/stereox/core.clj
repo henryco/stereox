@@ -44,10 +44,15 @@
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
    [nil "--codec CODEC" "Camera output codec"
-    :default [\Y \U \Y \V]
-    :default-desc "YUYV"
+    :default [\M \J \P \G]
+    :default-desc "MJPG"
     :parse-fn #(-> (str %) .trim .toUpperCase .toCharArray seq vec)
     :validate [#(= 4 (count %)) "Must be 4 chars codec code, eg. MJPG"]]
+
+   ["-q" "--quality NUMBER" "Quality from 1 to 4, lower == faster"
+    :default 3
+    :parse-fn #(Integer/parseInt %)
+    :validate [#(<= 1 % 4) "Must be a number between 1 and 4 included"]]
 
    ["-z" "--buffer-size NUMBER" "Buffer size (frames)"
     :id :buffer
@@ -84,8 +89,6 @@
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
-   [nil "--show-chessboard" "Show detected chessboard"]
-
    ["-o" "--output-folder FOLDER_NAME" "Folder to write calibration files to"
     :parse-fn #(io/file %)
     :missing "Output folder option is required"
@@ -101,7 +104,12 @@
   (System/exit status))
 
 (defn usage [options-summary]
-  (->> ["StereoX - stereo vision" "Options:" options-summary]
+  (->> ["StereoX - stereo vision."
+        ""
+        "For proper configuration first check your camera allowed properties: "
+        "[  $ v4l2-ctl -d \"/dev/video${ID}\" --list-formats-ext  ]"
+        ""
+        "Options:" options-summary]
        (string/join \newline)))
 
 (defn validate-args [args]

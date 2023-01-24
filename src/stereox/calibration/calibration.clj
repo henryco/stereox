@@ -13,7 +13,8 @@
 (defrecord Props
   [^File directory
    ^Integer rows
-   ^Integer columns])
+   ^Integer columns
+   ^Integer quality])
 
 (def ^:private *params
   "Props"
@@ -143,21 +144,34 @@
               output)
      output)))
 
+(defn calc-quality
+  "Calculates quality flags for chessboard finder algorithm.
+  Quality should be integer from 1 to 4 included.
+  Returns integer quality flag."
+  {:tag    Integer
+   :static true}
+  [^Integer quality]
+  (reduce +
+          (-> [Calib3d/CALIB_CB_FAST_CHECK
+               Calib3d/CALIB_CB_NORMALIZE_IMAGE
+               Calib3d/CALIB_CB_FILTER_QUADS
+               Calib3d/CALIB_CB_ADAPTIVE_THRESH]
+              (subvec 0 quality))))
+
 (defn find-squares ^CBData [^Mat image]
   (let [buffer_result (img-copy image)
         buffer_gray (img-copy image
                               Imgproc/COLOR_BGR2GRAY)
         corners (MatOfPoint2f.)
-        flags (+ Calib3d/CALIB_CB_FAST_CHECK
-                 ;Calib3d/CALIB_CB_ADAPTIVE_THRESH
-                 Calib3d/CALIB_CB_NORMALIZE_IMAGE
-                 0)
         pattern_size (Size. (- (:rows @*params) 1)
                             (- (:columns @*params) 1))
+        flags (calc-quality (:quality @*params))
         found (Calib3d/findChessboardCorners buffer_gray
                                              pattern_size
                                              corners
                                              flags)]
+
+    ; TODO: THIS SECTION MIGHT BE MOVED FURTHER IN PIPELINE
     (if found
       (Imgproc/cornerSubPix buffer_gray
                             corners
@@ -167,6 +181,8 @@
                                               TermCriteria/COUNT)
                                            30
                                            0.1)))
+    ; TODO: MOVE ^^^
+
     (Calib3d/drawChessboardCorners buffer_result
                                    pattern_size
                                    corners
@@ -206,12 +222,13 @@
 
 (defn calibrate [& {:keys [output-folder
                            columns
+                           quality
                            rows
                            width
                            height
                            ] :as all}]
   ; setup calibration properties
-  (reset! *params (Props. output-folder rows columns))
+  (reset! *params (Props. output-folder rows columns quality))
 
   ; setup camera
   (reset! *camera (camera/create all))
