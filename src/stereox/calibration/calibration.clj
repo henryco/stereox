@@ -1,12 +1,13 @@
 (ns stereox.calibration.calibration
   (:require [cljfx.api :as fx]
-            [stereox.camera.stereo-camera :as camera])
+            [stereox.camera.stereo-camera :as camera]
+            [stereox.utils.commons :as commons])
   (:import (java.io ByteArrayInputStream File)
            (javafx.animation AnimationTimer)
            (javafx.application Platform)
            (javafx.scene.image Image)
            (org.opencv.calib3d Calib3d)
-           (org.opencv.core Mat MatOfPoint2f Size TermCriteria)
+           (org.opencv.core Mat MatOfPoint2f Size)
            (org.opencv.imgproc Imgproc))
   (:gen-class))
 
@@ -14,7 +15,8 @@
   [^File directory
    ^Integer rows
    ^Integer columns
-   ^Integer quality])
+   ^Integer quality
+   ^Integer delay])
 
 (def ^:private *params
   "Props"
@@ -36,15 +38,11 @@
                   }
          }))
 
-(defn prep-dirs [^File dir]
-  (if (not (.exists dir))
-    (.mkdir dir)))
-
 (defn image-adapt [matrices]
   (if (some? matrices)
     (map #(deref %)
          (map #(future
-                 (-> (camera/mat-to-bytes %)
+                 (-> (commons/mat-to-bytes %)
                      (ByteArrayInputStream.)
                      (Image.))
                  ) matrices))
@@ -132,18 +130,6 @@
    ^Boolean found
    ^MatOfPoint2f corners])
 
-(defn img-copy
-  "Copy image matrix, optionally apply color change."
-  ([^Mat image ^Integer code]
-   (let [output (Mat.)]
-     (Imgproc/cvtColor image output code)
-     output))
-  ([^Mat image]
-   (let [output (Mat.)]
-     (.copyTo image
-              output)
-     output)))
-
 (defn calc-quality
   "Calculates quality flags for chessboard finder algorithm.
   Quality should be integer from 1 to 4 included.
@@ -159,8 +145,8 @@
               (subvec 0 quality))))
 
 (defn find-squares ^CBData [^Mat image]
-  (let [buffer_result (img-copy image)
-        buffer_gray (img-copy image
+  (let [buffer_result (commons/img-copy image)
+        buffer_gray (commons/img-copy image
                               Imgproc/COLOR_BGR2GRAY)
         corners (MatOfPoint2f.)
         pattern_size (Size. (- (:rows @*params) 1)
@@ -172,15 +158,15 @@
                                              flags)]
 
     ; TODO: THIS SECTION MIGHT BE MOVED FURTHER IN PIPELINE
-    (if found
-      (Imgproc/cornerSubPix buffer_gray
-                            corners
-                            (Size. 11 11)
-                            (Size. -1 -1)
-                            (TermCriteria. (+ TermCriteria/MAX_ITER
-                                              TermCriteria/COUNT)
-                                           30
-                                           0.1)))
+    ;(if found
+    ;  (Imgproc/cornerSubPix buffer_gray
+    ;                        corners
+    ;                        (Size. 11 11)
+    ;                        (Size. -1 -1)
+    ;                        (TermCriteria. (+ TermCriteria/MAX_ITER
+    ;                                          TermCriteria/COUNT)
+    ;                                       30
+    ;                                       0.1)))
     ; TODO: MOVE ^^^
 
     (Calib3d/drawChessboardCorners buffer_result
@@ -210,6 +196,8 @@
   (if (some? data)
     (map #(:image_chessboard %) data)))
 
+
+
 (defn main-cb []
   (let [captured (camera/capture @*camera)
         prepared (prepare-images captured)
@@ -226,9 +214,10 @@
                            rows
                            width
                            height
+                           delay
                            ] :as all}]
   ; setup calibration properties
-  (reset! *params (Props. output-folder rows columns quality))
+  (reset! *params (Props. output-folder rows columns quality delay))
 
   ; setup camera
   (reset! *camera (camera/create all))

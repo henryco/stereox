@@ -1,9 +1,9 @@
 (ns stereox.camera.stereo-camera
-  (:require [clojure.walk :as cw])
+  (:require [clojure.walk :as cw]
+            [stereox.utils.commons :as commons])
   (:import (clojure.lang Atom PersistentVector)
            (nu.pattern OpenCV)
-           (org.opencv.core Mat MatOfByte MatOfInt)
-           (org.opencv.imgcodecs Imgcodecs)
+           (org.opencv.core Mat)
            (org.opencv.videoio VideoCapture VideoWriter Videoio))
   (:gen-class))
 
@@ -40,20 +40,11 @@
 (defn create-codec [^chars [^char a ^char b ^char c ^char d]]
   (VideoWriter/fourcc a b c d))
 
-(defn vecs-to-mat ^MatOfInt [v]
-  (-> v (flatten) (vec) (int-array) (MatOfInt.)))
-
-(defn mat-to-bytes ^bytes [^Mat mat]
-  (let [bytes (MatOfByte.)]
-    (Imgcodecs/imencode ".png" mat bytes
-                        (-> [Imgcodecs/IMWRITE_PNG_COMPRESSION 0
-                             Imgcodecs/IMWRITE_PNG_STRATEGY Imgcodecs/IMWRITE_PNG_STRATEGY_FIXED
-                             ] (vecs-to-mat)))
-    (.toArray bytes)))
-
-(defn init-executor-pools [captures]
+(defn init-executor-pools
+  "Warmup system thread pool for futures"
+  [captures]
   (let [status (-> #(future (str (System/currentTimeMillis) " [" % "]: OK")) (map captures))]
-    (run! #(println @%) status)))
+    (run! #(deref %) status)))
 
 (defn init-camera
   "Initialize stereo camera.
@@ -93,7 +84,7 @@
                                            [Videoio/CAP_PROP_GAIN (:gain properties)] [])
 
                                          Videoio/CAP_PROP_FPS (:fps properties)]
-                                        (vecs-to-mat))
+                                        (commons/vecs-to-mat))
                                     )]
                       capture)                              ; return initialized video capture
                    (:ids properties))                       ; return captures for every id
