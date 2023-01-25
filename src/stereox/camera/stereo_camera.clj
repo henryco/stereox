@@ -37,7 +37,12 @@
   (release [_]
     "Cleanup allocated resources"))
 
-(defn create-codec [^chars [^char a ^char b ^char c ^char d]]
+(defn create-codec
+  "Returns int video codec code.
+  Expects array of chars, i.e. [\\M \\J \\P \\G]"
+  {:tag    Integer
+   :static true}
+  [^chars [^char a ^char b ^char c ^char d]]
   (VideoWriter/fourcc a b c d))
 
 (defn init-executor-pools

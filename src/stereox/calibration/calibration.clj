@@ -1,7 +1,8 @@
 (ns stereox.calibration.calibration
   (:require [cljfx.api :as fx]
             [stereox.camera.stereo-camera :as camera]
-            [stereox.utils.commons :as commons])
+            [stereox.utils.commons :as commons]
+            [stereox.utils.timer :as timer])
   (:import (java.io ByteArrayInputStream File)
            (javafx.animation AnimationTimer)
            (javafx.application Platform)
@@ -24,6 +25,10 @@
 
 (def ^:private *camera
   "StereoCamera"
+  (atom nil))
+
+(def ^:private *timer
+  "FnTimer"
   (atom nil))
 
 (def ^:private *state
@@ -52,6 +57,7 @@
   (try
     (swap! *state assoc :alive false)
     (camera/release @*camera)
+    (timer/stop @*timer)
     (catch Exception e (.printStackTrace e)))
   (try
     (Platform/exit)
@@ -121,8 +127,7 @@
     (proxy [AnimationTimer] []
       (handle [_]
         (if (:alive @*state)
-          (func))
-        ))))
+          (func))))))
 
 (defrecord CBData
   [^Mat image_original
@@ -202,6 +207,11 @@
   (let [captured (camera/capture @*camera)
         prepared (prepare-images captured)
         images (image-adapt (unwrap-prepared prepared))]
+
+    ; TODO: TIMER LOGIC
+    (timer/tick @*timer #(println "NOPE"))
+    ; TODO: TIMER LOGIC
+
     (if (some? images)
       (swap! *state assoc-in [:camera :image] images))
     ; TODO: MORE
@@ -221,6 +231,9 @@
 
   ; setup camera
   (reset! *camera (camera/create all))
+
+  ; setup timer
+  (reset! *timer (timer/create-start-timer delay))
 
   ; setup javafx
   (swap! *state assoc-in [:camera :viewport]

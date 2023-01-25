@@ -2,7 +2,8 @@
   (:import (java.io File)
            (org.opencv.core Mat MatOfByte MatOfInt)
            (org.opencv.imgcodecs Imgcodecs)
-           (org.opencv.imgproc Imgproc)))
+           (org.opencv.imgproc Imgproc))
+  (:gen-class))
 
 (defn prep-dirs
   "Creates directory if not exists"
