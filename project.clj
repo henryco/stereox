@@ -8,4 +8,5 @@
                  [org.clojure/clojure "1.11.1"]
                  [org.openpnp/opencv "4.6.0-0"]
                  [cljfx "1.7.22"]
-                 ])
+                 ]
+  :main stereox.core)
