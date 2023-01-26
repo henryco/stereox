@@ -1,1 +1,2 @@
-(ns stereox.calibration.calibrator)
+(ns stereox.calibration.calibrator
+  (:gen-class))

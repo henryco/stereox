@@ -206,11 +206,13 @@
 (defn main-cb []
   (let [captured (camera/capture @*camera)
         prepared (prepare-images captured)
-        images (image-adapt (unwrap-prepared prepared))]
+        images (image-adapt (unwrap-prepared prepared))
 
-    ; TODO: TIMER LOGIC
-    (timer/tick @*timer #(println "NOPE"))
-    ; TODO: TIMER LOGIC
+        result (timer/tick @*timer #(str "WOW"))
+        ]
+
+    (if (some? result)
+      (println "RESULT: " result))
 
     (if (some? images)
       (swap! *state assoc-in [:camera :image] images))

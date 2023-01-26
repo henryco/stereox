@@ -1,7 +1,6 @@
 (ns stereox.utils.timer
-
-  (:gen-class)
-  (:import (clojure.lang Atom)))
+  (:import (clojure.lang Atom))
+  (:gen-class))
 
 (defprotocol ITimer
   "Simple timer protocol"
@@ -18,7 +17,7 @@
     "Stop timer and returns itself")
 
   (tick [_] [_ fn]
-    "Tick a timer and returns itself")
+    "Tick a timer and returns function call result")
 
   (remains [_]
     "Get remaining time.
@@ -54,17 +53,20 @@
                :time time}))
     this)
 
-  (tick [this func]
-    (if (:ok @*state)
-      (swap! *state
-             #(let [time (:time %)
-                    now (System/currentTimeMillis)
-                    dt (- (:te %) now)]
-                (if (< dt 0)
-                  (do (func)
-                      (assoc % :te (+ now time)))
-                  %))))
-    this)
+  (tick [_ func]
+    (let [result (promise)]
+      (if (:ok @*state)
+        (swap! *state
+               #(let [time (:time %)
+                      now (System/currentTimeMillis)
+                      dt (- (:te %) now)]
+                  (if (< dt 0)
+                    (do (deliver result (func))
+                        (assoc % :te (+ now time)))
+                    %))))
+      (if (realized? result)
+        (deref result)
+        nil)))
 
   (tick [this]
     (tick this (:fn @*state)))
