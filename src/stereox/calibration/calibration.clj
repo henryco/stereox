@@ -201,24 +201,22 @@
   (if (some? data)
     (map #(:image_chessboard %) data)))
 
-
+(defn store-cb-data
+  "Store data from vector of CBData.
+  Expects vector or sequence of CBData"
+  [data]
+  ; TODO
+  )
 
 (defn main-cb []
   (let [captured (camera/capture @*camera)
         prepared (prepare-images captured)
-        images (image-adapt (unwrap-prepared prepared))
-
-        result (timer/tick @*timer #(str "WOW"))
-        ]
-
-    (if (some? result)
-      (println "RESULT: " result))
-
+        images (image-adapt (unwrap-prepared prepared))]
+    (if (every? #(true? (:found %)) prepared)
+      (timer/tick @*timer #(store-cb-data prepared))
+      (timer/reset @*timer))
     (if (some? images)
-      (swap! *state assoc-in [:camera :image] images))
-    ; TODO: MORE
-    )
-  )
+      (swap! *state assoc-in [:camera :image] images))))
 
 (defn calibrate [& {:keys [output-folder
                            columns
