@@ -79,7 +79,9 @@
     this)
 
   (stop [this]
-    (reset! *state {:ok false})
+    (reset this)
+    (if (:ok @*state)
+      (swap! *state assoc :ok false))
     this)
 
   (remains [this]

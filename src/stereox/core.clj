@@ -25,7 +25,7 @@
    ["-n" "--images-number NUMBER" "Number of images"
     :default 11
     :parse-fn #(Integer/parseInt %)
-    :validate [#(< 3 % 256) "Must be a number between 3 and 256"]]
+    :validate [#(< 3 % 256) "Must be a number between 4 and 256"]]
 
    ["-d" "--delay DELAY" "Delay in [ms] before next capture after chessboard found"
     :parse-fn #(Integer/parseInt %)

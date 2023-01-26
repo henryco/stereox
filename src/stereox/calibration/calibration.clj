@@ -2,8 +2,10 @@
   (:require [cljfx.api :as fx]
             [stereox.camera.stereo-camera :as camera]
             [stereox.utils.commons :as commons]
-            [stereox.utils.timer :as timer])
-  (:import (java.io ByteArrayInputStream File)
+            [stereox.utils.timer :as timer]
+            [taoensso.timbre :as log])
+  (:import (clojure.lang PersistentVector)
+           (java.io ByteArrayInputStream File)
            (javafx.animation AnimationTimer)
            (javafx.application Platform)
            (javafx.scene.image Image)
@@ -13,11 +15,24 @@
   (:gen-class))
 
 (defrecord Props
-  [^File directory
+  [^PersistentVector ids
+   ^File directory
    ^Integer rows
    ^Integer columns
    ^Integer quality
-   ^Integer delay])
+   ^Integer delay
+   ^Integer total])
+
+(defrecord CBData
+  [^Mat image_original
+   ^Mat image_chessboard
+   ^Boolean found
+   ^MatOfPoint2f corners])
+
+(defrecord CabD
+  [^String id
+   ^Mat image
+   ^MatOfPoint2f corners])
 
 (def ^:private *params
   "Props"
@@ -30,6 +45,10 @@
 (def ^:private *timer
   "FnTimer"
   (atom nil))
+
+(def ^:private *images
+  "CabD[]"
+  (atom []))
 
 (def ^:private *state
   "JavaFX UI State"
@@ -53,11 +72,14 @@
                  ) matrices))
     nil))
 
+(defn terminate-graphics []
+  (swap! *state assoc :alive false)
+  (timer/stop @*timer)
+  (camera/release @*camera))
+
 (defn shutdown [& {:keys [code]}]
   (try
-    (swap! *state assoc :alive false)
-    (camera/release @*camera)
-    (timer/stop @*timer)
+    (terminate-graphics)
     (catch Exception e (.printStackTrace e)))
   (try
     (Platform/exit)
@@ -103,8 +125,8 @@
 
 (defn root [state]
   {:fx/type           :stage
-   :showing           true
    :resizable         true
+   :showing           (:alive state)
    :title             (:title state)
    :on-close-request  shutdown
    :on-height-changed on-win-height-change
@@ -129,12 +151,6 @@
         (if (:alive @*state)
           (func))))))
 
-(defrecord CBData
-  [^Mat image_original
-   ^Mat image_chessboard
-   ^Boolean found
-   ^MatOfPoint2f corners])
-
 (defn calc-quality
   "Calculates quality flags for chessboard finder algorithm.
   Quality should be integer from 1 to 4 included.
@@ -152,7 +168,7 @@
 (defn find-squares ^CBData [^Mat image]
   (let [buffer_result (commons/img-copy image)
         buffer_gray (commons/img-copy image
-                              Imgproc/COLOR_BGR2GRAY)
+                                      Imgproc/COLOR_BGR2GRAY)
         corners (MatOfPoint2f.)
         pattern_size (Size. (- (:rows @*params) 1)
                             (- (:columns @*params) 1))
@@ -201,12 +217,30 @@
   (if (some? data)
     (map #(:image_chessboard %) data)))
 
-(defn store-cb-data
-  "Store data from vector of CBData.
-  Expects vector or sequence of CBData"
-  [data]
+(defn calibrate-camera []
+  (log/info "CALIBRATION")
   ; TODO
   )
+
+(defn store-cb-data
+  "Store data from vector of CBData.
+  IF stored enough data, shutdowns ui and calibrate camera.
+  Expects vector or sequence of CBData"
+  [data]
+  (swap! *images
+         conj
+         (map-indexed
+           (fn [idx item]
+             (CabD. (nth (:ids @*params) idx)
+                    (:image_original item)
+                    (:corners item)))
+           data))
+  (let [size (count @*images)
+        total (:total @*params)]
+    (log/info "Captured: [" size "] of [" total "]")
+    (if (>= size total)
+      (do (terminate-graphics)
+          (future (calibrate-camera))))))
 
 (defn main-cb []
   (let [captured (camera/capture @*camera)
@@ -219,27 +253,26 @@
       (swap! *state assoc-in [:camera :image] images))))
 
 (defn calibrate [& {:keys [output-folder
+                           images-number
                            columns
                            quality
                            rows
                            width
                            height
                            delay
+                           ids
                            ] :as all}]
   ; setup calibration properties
-  (reset! *params (Props. output-folder rows columns quality delay))
-
+  (reset! *params (Props. ids output-folder rows
+                          columns quality delay
+                          images-number))
   ; setup camera
   (reset! *camera (camera/create all))
-
   ; setup timer
   (reset! *timer (timer/create-start-timer delay))
-
   ; setup javafx
   (swap! *state assoc-in [:camera :viewport]
          {:width width :height height :min-x 0 :min-y 0})
-
   ;; Convenient way to add watch to an atom + immediately render app
   (fx/mount-renderer *state renderer)
-
   (start-ui-loop main-cb))
