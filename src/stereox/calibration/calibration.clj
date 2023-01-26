@@ -188,7 +188,6 @@
     ;                                          TermCriteria/COUNT)
     ;                                       30
     ;                                       0.1)))
-    ; TODO: MOVE ^^^
 
     (Calib3d/drawChessboardCorners buffer_result
                                    pattern_size
