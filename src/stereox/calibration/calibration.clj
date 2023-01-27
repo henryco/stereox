@@ -217,9 +217,15 @@
     (map #(:image_chessboard %) data)))
 
 (defn calibrate-camera []
-  (log/info "CALIBRATION")
-  ; TODO
-  )
+  (log/info "calibration...")
+  ; map -> {id1: [{}{}{}] id2: [{}{}{}] ...}
+  (let [calibration_map (reduce (fn [o n]
+                                   (let [key (str (:id n))]
+                                     (assoc o key (conj (get o key []) n))))
+                                 {} (flatten @*images))]
+    (println calibration_map)
+    ; TODO CALIBRATION
+    ))
 
 (defn store-cb-data
   "Store data from vector of CBData.
