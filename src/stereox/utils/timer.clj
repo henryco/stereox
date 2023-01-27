@@ -54,18 +54,20 @@
     this)
 
   (tick [_ func]
-    (let [result (promise)]
+    (let [updated? (promise)]
       (if (:ok @*state)
         (swap! *state
                #(let [time (:time %)
                       now (System/currentTimeMillis)
                       dt (- (:te %) now)]
                   (if (< dt 0)
-                    (do (deliver result (func))
+                    (do (deliver updated? true)
                         (assoc % :te (+ now time)))
-                    %))))
-      (if (realized? result)
-        (deref result)
+                    (do (deliver updated? false)
+                        %)))))
+      (if (and (realized? updated?)
+               (true? @updated?))
+        (func)
         nil)))
 
   (tick [this]
@@ -79,7 +81,6 @@
     this)
 
   (stop [this]
-    (reset this)
     (if (:ok @*state)
       (swap! *state assoc :ok false))
     this)
