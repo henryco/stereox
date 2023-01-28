@@ -177,18 +177,6 @@
                                              pattern_size
                                              corners
                                              flags)]
-
-    ; TODO: THIS SECTION MIGHT BE MOVED FURTHER IN PIPELINE
-    ;(if found
-    ;  (Imgproc/cornerSubPix buffer_gray
-    ;                        corners
-    ;                        (Size. 11 11)
-    ;                        (Size. -1 -1)
-    ;                        (TermCriteria. (+ TermCriteria/MAX_ITER
-    ;                                          TermCriteria/COUNT)
-    ;                                       30
-    ;                                       0.1)))
-
     (Calib3d/drawChessboardCorners buffer_result
                                    pattern_size
                                    corners
@@ -216,16 +204,43 @@
   (if (some? data)
     (map #(:image_chessboard %) data)))
 
-(defn calibrate-camera []
+(defn calibrate-camera
+  "Calibrate camera
+  Expects:
+   id   - camera id
+   data - vector of CabD
+  Returns camera id"
+  [id data]
+  (let [[rows columns] @*params
+        obp (commons/obp-matrix rows columns)]
+    (println "Camera calibration: " id " | " data)
+
+    ;  (Imgproc/cornerSubPix buffer_gray
+    ;                        corners
+    ;                        (Size. 11 11)
+    ;                        (Size. -1 -1)
+    ;                        (TermCriteria. (+ TermCriteria/MAX_ITER
+    ;                                          TermCriteria/COUNT)
+    ;                                       30
+    ;                                       0.1)))
+
+    ))
+
+(defn calibrate-cameras []
   (log/info "calibration...")
   ; map -> {id1: [{}{}{}] id2: [{}{}{}] ...}
   (let [calibration_map (reduce (fn [o n]
                                    (let [key (str (:id n))]
                                      (assoc o key (conj (get o key []) n))))
                                  {} (flatten @*images))]
-    (println calibration_map)
-    ; TODO CALIBRATION
-    ))
+    ; TODO FIXME
+    (map #(log/info "Camera calibrated: " @%)
+         (map (fn [[k v]]
+                (future (calibrate-camera k v)))
+              calibration_map))
+
+    (log/info "All cameras calibrated")
+    (shutdown)))
 
 (defn store-cb-data
   "Store data from vector of CBData.
@@ -245,7 +260,7 @@
     (log/info "Captured: [" size "] of [" total "]")
     (if (>= size total)
       (do (terminate-graphics)
-          (future (calibrate-camera))))))
+          (future (calibrate-cameras))))))
 
 (defn main-cb []
   (let [captured (camera/capture @*camera)

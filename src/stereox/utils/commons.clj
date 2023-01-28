@@ -1,6 +1,7 @@
 (ns stereox.utils.commons
   (:import (java.io File)
-           (org.opencv.core Mat MatOfByte MatOfInt)
+           (java.util Arrays)
+           (org.opencv.core Mat MatOfByte MatOfInt MatOfPoint3f Point3)
            (org.opencv.imgcodecs Imgcodecs)
            (org.opencv.imgproc Imgproc))
   (:gen-class))
@@ -44,3 +45,20 @@
                              Imgcodecs/IMWRITE_PNG_STRATEGY Imgcodecs/IMWRITE_PNG_STRATEGY_FIXED
                              ] (vecs-to-mat)))
     (.toArray bytes)))
+
+(defn obp-matrix
+  "Creates MatOfPoint3f"
+  {:tag    MatOfPoint3f
+   :static true}
+  [^Integer dim_x ^Integer dim_y]
+  (let [points (for [y (range dim_y)
+                     x (range dim_x)]
+                 [(float x)
+                  (float y)])
+        array (into-array Point3
+                          (map (fn [[x y]]
+                                 (Point3. x y 0.))
+                               points))
+        matrix (MatOfPoint3f.)]
+    (.fromArray matrix array)
+    matrix))
