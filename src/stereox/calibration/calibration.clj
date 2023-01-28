@@ -6,11 +6,12 @@
             [taoensso.timbre :as log])
   (:import (clojure.lang PersistentVector)
            (java.io ByteArrayInputStream File)
+           (java.util ArrayList)
            (javafx.animation AnimationTimer)
            (javafx.application Platform)
            (javafx.scene.image Image)
            (org.opencv.calib3d Calib3d)
-           (org.opencv.core Mat MatOfPoint2f Size)
+           (org.opencv.core Mat MatOfPoint2f Size TermCriteria)
            (org.opencv.imgproc Imgproc))
   (:gen-class))
 
@@ -33,6 +34,12 @@
   [^String id
    ^Mat image
    ^MatOfPoint2f corners])
+
+(defrecord OneOfPairData
+  [^String id
+   ^ArrayList object_points
+   ^ArrayList image_points
+   ^Size image_size])
 
 (def ^:private *params
   "Props"
@@ -204,38 +211,61 @@
   (if (some? data)
     (map #(:image_chessboard %) data)))
 
-(defn calibrate-camera
+(defn prepare-parameters
   "Calibrate camera
   Expects:
-   id   - camera id
-   data - vector of CabD
-  Returns camera id"
+    id   - camera id
+    data - vector of CabD
+  Returns: OneOfPairData"
+  {:tag    OneOfPairData
+   :static false}
   [id data]
-  (let [obp (commons/obp-matrix (:rows @*params)
-                                (:columns @*params))]
-    ;  (Imgproc/cornerSubPix buffer_gray
-    ;                        corners
-    ;                        (Size. 11 11)
-    ;                        (Size. -1 -1)
-    ;                        (TermCriteria. (+ TermCriteria/MAX_ITER
-    ;                                          TermCriteria/COUNT)
-    ;                                       30
-    ;                                       0.1)))
+  (println "prepare params")
 
-    )
-  id)
+  (try
+    (let [obp (commons/obp-matrix (:rows @*params)
+                                  (:columns @*params))
+          obj_p (ArrayList.)
+          img_p (ArrayList.)
+          img_size (Size.)] ; FIXME
+      (run! (fn [{:keys [^Mat image ^MatOfPoint2f corners]}]
+              (let [buffer_gray (commons/img-copy image
+                                                  Imgproc/COLOR_BGR2GRAY)]
+                (Imgproc/cornerSubPix buffer_gray
+                                      corners
+                                      (Size. 11 11)
+                                      (Size. -1 -1)
+                                      (TermCriteria. (+ TermCriteria/MAX_ITER
+                                                        TermCriteria/COUNT)
+                                                     30
+                                                     0.1))
+                (.set img_size (.size buffer_gray)) ; FIXME
+                (.add img_p corners)
+                (.add obj_p obp))
+              ) data)
+      (OneOfPairData. id obj_p img_p img_size))
+
+    (catch Exception e (do (.printStackTrace e)
+                           (shutdown -1))))
+  )
+
+(defn stereo-calibration [config_map]
+  (log/info "calibration..." config_map)
+  ;TODO
+  )
 
 (defn calibrate-cameras []
-  (log/info "calibration...")
   ; map -> {id1: [{}{}{}] id2: [{}{}{}] ...}
   (let [calibration_map (reduce (fn [o n]
                                   (let [key (str (:id n))]
                                     (assoc o key (conj (get o key []) n))))
-                                {} (flatten @*images))]
-    (run! #(deref %)
-          (map (fn [[k v]]
-                 (future (calibrate-camera k v)))
-               calibration_map))
+                                {} (flatten @*images))
+        config_map (map #(deref %)
+                        (map (fn [[k v]]
+                               (future (prepare-parameters k v)))
+                             calibration_map))]
+    (println "START")
+    (stereo-calibration config_map)
     (shutdown)))
 
 (defn store-cb-data
