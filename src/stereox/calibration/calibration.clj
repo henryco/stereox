@@ -211,10 +211,8 @@
    data - vector of CabD
   Returns camera id"
   [id data]
-  (let [[rows columns] @*params
-        obp (commons/obp-matrix rows columns)]
-    (println "Camera calibration: " id " | " data)
-
+  (let [obp (commons/obp-matrix (:rows @*params)
+                                (:columns @*params))]
     ;  (Imgproc/cornerSubPix buffer_gray
     ;                        corners
     ;                        (Size. 11 11)
@@ -224,22 +222,20 @@
     ;                                       30
     ;                                       0.1)))
 
-    ))
+    )
+  id)
 
 (defn calibrate-cameras []
   (log/info "calibration...")
   ; map -> {id1: [{}{}{}] id2: [{}{}{}] ...}
   (let [calibration_map (reduce (fn [o n]
-                                   (let [key (str (:id n))]
-                                     (assoc o key (conj (get o key []) n))))
-                                 {} (flatten @*images))]
-    ; TODO FIXME
-    (map #(log/info "Camera calibrated: " @%)
-         (map (fn [[k v]]
-                (future (calibrate-camera k v)))
-              calibration_map))
-
-    (log/info "All cameras calibrated")
+                                  (let [key (str (:id n))]
+                                    (assoc o key (conj (get o key []) n))))
+                                {} (flatten @*images))]
+    (run! #(deref %)
+          (map (fn [[k v]]
+                 (future (calibrate-camera k v)))
+               calibration_map))
     (shutdown)))
 
 (defn store-cb-data
