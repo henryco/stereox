@@ -11,7 +11,7 @@
            (javafx.application Platform)
            (javafx.scene.image Image)
            (org.opencv.calib3d Calib3d)
-           (org.opencv.core Mat MatOfPoint2f Rect Size TermCriteria)
+           (org.opencv.core Mat MatOfPoint2f Size TermCriteria)
            (org.opencv.imgproc Imgproc))
   (:gen-class))
 
@@ -286,7 +286,6 @@
         translation_mtx (Mat.)
         essential_mtx (Mat.)
         fundamental_mtx (Mat.)]
-    ; FIXME
     (Calib3d/stereoCalibrate (:object_points left)
                              (:image_points left)
                              (:image_points right)
@@ -308,6 +307,7 @@
                                             0.000001)
                              )
     (log/info "Calibration done, saving results...")
+    ; TODO WRITE RESULTS
     ))
 
 (defn stereo-calibration
