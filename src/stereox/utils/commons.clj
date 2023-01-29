@@ -50,15 +50,31 @@
   "Creates MatOfPoint3f"
   {:tag    MatOfPoint3f
    :static true}
-  [^Integer dim_x ^Integer dim_y]
-  (let [points (for [y (range dim_y)
-                     x (range dim_x)]
-                 [(float x)
-                  (float y)])
-        array (into-array Point3
-                          (map (fn [[x y]]
-                                 (Point3. x y 0.))
-                               points))
-        matrix (MatOfPoint3f.)]
-    (.fromArray matrix array)
-    matrix))
+  [^Integer cornersHorizontal
+   ^Integer cornersVertical]
+  (let [size (* cornersHorizontal cornersVertical)
+        mat (MatOfPoint3f.)]
+    (for [j (range size)]
+      (let [x (int (/ j cornersHorizontal))
+            y (int (mod j cornersVertical))
+            p (Point3. x y 0.0)]
+        (.push_back mat (MatOfPoint3f. p))
+        ))
+    mat))
+
+;(defn obp-matrix
+;  "Creates MatOfPoint3f"
+;  {:tag    MatOfPoint3f
+;   :static true}
+;  [^Integer dim_x ^Integer dim_y]
+;  (let [points (for [y (range dim_y)
+;                     x (range dim_x)]
+;                 [(float x)
+;                  (float y)])
+;        array (into-array Point3
+;                          (map (fn [[x y]]
+;                                 (Point3. x y 0.))
+;                               points))
+;        matrix (MatOfPoint3f.)]
+;    (.fromArray matrix array)
+;    matrix))

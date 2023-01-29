@@ -11,7 +11,7 @@
            (javafx.application Platform)
            (javafx.scene.image Image)
            (org.opencv.calib3d Calib3d)
-           (org.opencv.core Mat MatOfPoint2f Size TermCriteria)
+           (org.opencv.core Mat MatOfPoint2f Rect Size TermCriteria)
            (org.opencv.imgproc Imgproc))
   (:gen-class))
 
@@ -177,8 +177,8 @@
         buffer_gray (commons/img-copy image
                                       Imgproc/COLOR_BGR2GRAY)
         corners (MatOfPoint2f.)
-        pattern_size (Size. (- (:rows @*params) 1)
-                            (- (:columns @*params) 1))
+        pattern_size (Size. (- (:columns @*params) 1)
+                            (- (:rows @*params) 1))
         flags (calc-quality (:quality @*params))
         found (Calib3d/findChessboardCorners buffer_gray
                                              pattern_size
@@ -221,8 +221,8 @@
    :static false}
   [id data]
   (log/info "preparing calibration parameters")
-  (let [obp (commons/obp-matrix (:rows @*params)
-                                (:columns @*params))
+  (let [obp (commons/obp-matrix (- (:columns @*params) 1)
+                                (- (:rows @*params) 1))
         obj_p (ArrayList.)
         img_p (ArrayList.)]
     (run! (fn [{:keys [^Mat image ^MatOfPoint2f corners]}]
@@ -244,13 +244,39 @@
                     (-> data (first) (:image) (.size))))
   )
 
-(defn calibrate-single [^OneOfPairData data]
+(defn calibrate-single
+  "Calibrates single camera and writes result somewhere"
+  [^OneOfPairData data]
   (log/info "calibrating single camera" data)
-  ;TODO
+  (let [img_size (:image_size data)
+        ; OUTPUT PARAMS BELOW
+        ;roi (Rect.)
+        cam_mtx (Mat.)
+        dist_coeffs (Mat.)
+        rotation_mtx (Mat.)
+        translation_mtx (Mat.)]
+    (Calib3d/calibrateCamera (:object_points data)
+                             (:image_points data)
+                             img_size
+                             cam_mtx
+                             dist_coeffs
+                             rotation_mtx
+                             translation_mtx)
+    ;(Calib3d/getOptimalNewCameraMatrix cam_mtx
+    ;                                   dist_coeffs
+    ;                                   img_size
+    ;                                   1
+    ;                                   img_size
+    ;                                   roi)
+    )
+    (log/info "Camera calibrated, writing results...")
+  ; TODO WRITE RESULTS
   )
 
-(defn calibrate-pair [^OneOfPairData left
-                      ^OneOfPairData right]
+(defn calibrate-pair
+  "Calibrates stereo camera and writes result somewhere"
+  [^OneOfPairData left
+   ^OneOfPairData right]
   (log/info "calibrating stereo pair, it may take a while...")
   (let [cam_mtx1 (Mat.)
         cam_mtx2 (Mat.)
@@ -268,7 +294,7 @@
                              dist_cf1
                              cam_mtx2
                              dist_cf2
-                             (:mage_size left)
+                             (:image_size left)
                              rotation_mtx
                              translation_mtx
                              essential_mtx
@@ -279,8 +305,9 @@
                              (TermCriteria. (+ TermCriteria/MAX_ITER
                                                TermCriteria/EPS)
                                             100
-                                            0.00001))
-    (log/info "Calibration done, saving results")
+                                            0.000001)
+                             )
+    (log/info "Calibration done, saving results...")
     ))
 
 (defn stereo-calibration
