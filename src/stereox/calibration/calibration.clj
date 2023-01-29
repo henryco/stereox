@@ -220,53 +220,68 @@
   {:tag    OneOfPairData
    :static false}
   [id data]
-  (println "prepare params")
-
-  (try
-    (let [obp (commons/obp-matrix (:rows @*params)
-                                  (:columns @*params))
-          obj_p (ArrayList.)
-          img_p (ArrayList.)
-          img_size (Size.)] ; FIXME
-      (run! (fn [{:keys [^Mat image ^MatOfPoint2f corners]}]
-              (let [buffer_gray (commons/img-copy image
-                                                  Imgproc/COLOR_BGR2GRAY)]
-                (Imgproc/cornerSubPix buffer_gray
-                                      corners
-                                      (Size. 11 11)
-                                      (Size. -1 -1)
-                                      (TermCriteria. (+ TermCriteria/MAX_ITER
-                                                        TermCriteria/COUNT)
-                                                     30
-                                                     0.1))
-                (.set img_size (.size buffer_gray)) ; FIXME
-                (.add img_p corners)
-                (.add obj_p obp))
-              ) data)
-      (OneOfPairData. id obj_p img_p img_size))
-
-    (catch Exception e (do (.printStackTrace e)
-                           (shutdown -1))))
+  (log/info "preparing calibration parameters")
+  (let [obp (commons/obp-matrix (:rows @*params)
+                                (:columns @*params))
+        obj_p (ArrayList.)
+        img_p (ArrayList.)]
+    (run! (fn [{:keys [^Mat image ^MatOfPoint2f corners]}]
+            (let [buffer_gray (commons/img-copy image
+                                                Imgproc/COLOR_BGR2GRAY)]
+              (Imgproc/cornerSubPix buffer_gray
+                                    corners
+                                    (Size. 11 11)
+                                    (Size. -1 -1)
+                                    (TermCriteria. (+ TermCriteria/MAX_ITER
+                                                      TermCriteria/COUNT)
+                                                   30
+                                                   0.1))
+              (.add img_p corners)
+              (.add obj_p obp))
+            ) data)
+    (OneOfPairData. id obj_p
+                    img_p
+                    (-> data (first) (:image) (.size))))
   )
 
-(defn stereo-calibration [config_map]
-  (log/info "calibration..." config_map)
+(defn calibrate-single [configuration]
+  (log/info "calibrate single")
   ;TODO
   )
 
+(defn calibrate-pair [left right]
+  (log/info "calibrate stereo pair")
+  ;TODO
+  )
+
+(defn stereo-calibration
+  "Camera stereo calibration.
+  Expects vector of OneOfPairData (each element corresponds to some camera)"
+  [configuration]
+  (let [size (count configuration)]
+    (cond
+      (= 1 size) (calibrate-single (first configuration))
+      (= 2 size) (calibrate-pair (first configuration)
+                                 (last configuration))
+      :else (throw (NoSuchMethodException.
+                     "More then 2 cameras actually not supported")))))
+
 (defn calibrate-cameras []
-  ; map -> {id1: [{}{}{}] id2: [{}{}{}] ...}
-  (let [calibration_map (reduce (fn [o n]
-                                  (let [key (str (:id n))]
-                                    (assoc o key (conj (get o key []) n))))
-                                {} (flatten @*images))
-        config_map (map #(deref %)
-                        (map (fn [[k v]]
-                               (future (prepare-parameters k v)))
-                             calibration_map))]
-    (println "START")
-    (stereo-calibration config_map)
-    (shutdown)))
+  (try
+    ; map -> {id1: [{}{}{}] id2: [{}{}{}] ...}
+    (let [calibration_map (reduce (fn [o n]
+                                    (let [key (str (:id n))]
+                                      (assoc o key (conj (get o key []) n))))
+                                  {} (flatten @*images))
+          configuration (map #(deref %)
+                          (map (fn [[k v]]
+                                 (future (prepare-parameters k v)))
+                               calibration_map))]
+      (stereo-calibration configuration)
+      (shutdown))
+    (catch Exception e (do (.printStackTrace e)
+                           (shutdown :code 1))))
+  )
 
 (defn store-cb-data
   "Store data from vector of CBData.
