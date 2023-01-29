@@ -244,15 +244,44 @@
                     (-> data (first) (:image) (.size))))
   )
 
-(defn calibrate-single [configuration]
-  (log/info "calibrate single")
+(defn calibrate-single [^OneOfPairData data]
+  (log/info "calibrating single camera" data)
   ;TODO
   )
 
-(defn calibrate-pair [left right]
-  (log/info "calibrate stereo pair")
-  ;TODO
-  )
+(defn calibrate-pair [^OneOfPairData left
+                      ^OneOfPairData right]
+  (log/info "calibrating stereo pair, it may take a while...")
+  (let [cam_mtx1 (Mat.)
+        cam_mtx2 (Mat.)
+        dist_cf1 (Mat.)
+        dist_cf2 (Mat.)
+        rotation_mtx (Mat.)
+        translation_mtx (Mat.)
+        essential_mtx (Mat.)
+        fundamental_mtx (Mat.)]
+    ; FIXME
+    (Calib3d/stereoCalibrate (:object_points left)
+                             (:image_points left)
+                             (:image_points right)
+                             cam_mtx1
+                             dist_cf1
+                             cam_mtx2
+                             dist_cf2
+                             (:mage_size left)
+                             rotation_mtx
+                             translation_mtx
+                             essential_mtx
+                             fundamental_mtx
+                             (+ Calib3d/CALIB_FIX_ASPECT_RATIO
+                                Calib3d/CALIB_ZERO_TANGENT_DIST
+                                Calib3d/CALIB_SAME_FOCAL_LENGTH)
+                             (TermCriteria. (+ TermCriteria/MAX_ITER
+                                               TermCriteria/EPS)
+                                            100
+                                            0.00001))
+    (log/info "Calibration done, saving results")
+    ))
 
 (defn stereo-calibration
   "Camera stereo calibration.
@@ -263,7 +292,7 @@
       (= 1 size) (calibrate-single (first configuration))
       (= 2 size) (calibrate-pair (first configuration)
                                  (last configuration))
-      :else (throw (NoSuchMethodException.
+      :else (throw (NoSuchMethodException.                  ; IMPLEMENT LATER MAYBE?
                      "More then 2 cameras actually not supported")))))
 
 (defn calibrate-cameras []
