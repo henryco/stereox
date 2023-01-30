@@ -244,24 +244,33 @@
                     (-> data (first) (:image) (.size))))
   )
 
-(defn calibrate-single
-  "Calibrates single camera and writes result somewhere"
-  [^OneOfPairData data]
-  (log/info "calibrating single camera" data)
-  (let [img_size (:image_size data)
-        cam_mtx (Mat.)
-        dist_coeffs (Mat.)
-        rotation_mtx (Mat.)
-        translation_mtx (Mat.)]
-    (Calib3d/calibrateCamera (:object_points data)
-                             (:image_points data)
-                             img_size
-                             cam_mtx
-                             dist_coeffs
-                             rotation_mtx
-                             translation_mtx)
-    )
-  (log/info "Camera calibrated, writing results...")
+(defrecord CameraData
+  [^String id
+   ^Mat camera_matrix
+   ^Mat distortion_coefficients
+   ^Mat rectification_transformation
+   ^Mat projection_matrix
+   ^Rect valid_pixels_roi
+   ^Mat undistortion_map
+   ^Mat rectification_map])
+
+(defrecord CalibrationData
+  [^Size size
+   ^Mat rotation_matrix
+   ^Mat translation_matrix
+   ^Mat essential_matrix
+   ^Mat fundamental_matrix
+   ^Mat disparity_to_depth_matrix
+   ^Mat disparity_to_depth_matrix_v2
+   camera_data])
+
+(defn save-calibrated
+  "Save calibrated data"
+  [^CalibrationData data]
+  (log/info "Saving calibration results...")
+
+
+
   )
 
 (defn calibrate-pair
@@ -360,9 +369,23 @@
                                               (:undistortion_map %)
                                               (:rectification_map %))
             pair)
-
-      (log/info "Calibration done, saving results...") ;TODO SAVE
-
+      (save-calibrated
+        (->CalibrationData img_size
+                           rotation_mtx
+                           translation_mtx
+                           essential_mtx
+                           fundamental_mtx
+                           disp_to_depth_mtx
+                           fixed_dsp_dpt_mtx
+                           (map #(->CameraData (:id %)
+                                               (:cam_mtx %)
+                                               (:dist_cf %)
+                                               (:rect_tr %)
+                                               (:prj_mtx %)
+                                               (:roi_mtx %)
+                                               (:undistortion_map %)
+                                               (:rectification_map %))
+                                pair)))
       )))
 
 (defn stereo-calibration
@@ -371,14 +394,15 @@
   [configuration]
   (let [size (count configuration)]
     (cond
-      (= 1 size) (calibrate-single (first configuration))
+      (= 1 size) (throw (NoSuchMethodException.             ; IMPLEMENT LATER MAYBE?
+                          "Single calibration not implemented"))
       (= 2 size) (calibrate-pair (first configuration)
                                  (last configuration))
       :else (throw (NoSuchMethodException.                  ; IMPLEMENT LATER MAYBE?
                      "More then 2 cameras actually not supported")))))
 
 (defn calibrate-cameras []
-  (try ; map -> {id1: [{}{}{}] id2: [{}{}{}] ...}
+  (try
     (let [calibration_map (reduce (fn [o n]
                                     (let [key (str (:id n))]
                                       (assoc o key (conj (get o key []) n))))
