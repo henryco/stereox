@@ -11,7 +11,7 @@
   {:static true}
   [^File dir]
   (if (not (.exists dir))
-    (.mkdir dir)))
+    (.mkdirs dir)))
 
 (defn img-copy
   "Copy image matrix, optionally apply color change."

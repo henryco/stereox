@@ -269,8 +269,17 @@
   [^CalibrationData data]
   (log/info "Saving calibration results...")
 
-
-
+  (let [dir_name (reduce #(str %1 "_" %2)
+                         (str (int (.width (:size data)))
+                              "x"
+                              (int (.height (:size data))))
+                         (map #(:id %)
+                              (:camera_data data)))
+        output_dir (File. ^File (:directory @*params)
+                          ^String dir_name)]
+    (commons/prep-dirs output_dir)
+    ;TODO SERIALIZE
+    )
   )
 
 (defn calibrate-pair
