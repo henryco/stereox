@@ -248,8 +248,6 @@
                     (-> data (first) (:image) (.size))))
   )
 
-
-
 (defn save-calibrated
   "Save calibrated data"
   [^CalibrationData data]
@@ -261,7 +259,7 @@
                          (map #(:id %)
                               (:camera_data data)))
         file_name (reduce #(str %1 "_" %2)
-                          (.format (SimpleDateFormat. "dd-MM-yyyy_HH:mm:ssZ")
+                          (.format (SimpleDateFormat. "ddMMyyyyHHmmSSS")
                                    (Date.))
                           (map #(:id %)
                                (:camera_data data)))
