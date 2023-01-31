@@ -1,12 +1,15 @@
 (ns stereox.calibration.calibration
   (:require [cljfx.api :as fx]
+            [stereox.calibration.serialization]
             [stereox.camera.stereo-camera :as camera]
             [stereox.utils.commons :as commons]
             [stereox.utils.timer :as timer]
+            [taoensso.nippy :as nippy]
             [taoensso.timbre :as log])
   (:import (clojure.lang PersistentVector)
-           (java.io ByteArrayInputStream File)
-           (java.util ArrayList)
+           (java.io ByteArrayInputStream File FileOutputStream)
+           (java.text SimpleDateFormat)
+           (java.util ArrayList Date)
            (javafx.animation AnimationTimer)
            (javafx.application Platform)
            (javafx.scene.image Image)
@@ -74,7 +77,7 @@
   (if (some? matrices)
     (map #(deref %)
          (map #(future
-                 (-> (commons/mat-to-bytes %)
+                 (-> (commons/image-mat-to-bytes %)
                      (ByteArrayInputStream.)
                      (Image.))
                  ) matrices))
@@ -251,19 +254,25 @@
   "Save calibrated data"
   [^CalibrationData data]
   (log/info "Saving calibration results...")
-
   (let [dir_name (reduce #(str %1 "_" %2)
                          (str (int (.width (:size data)))
                               "x"
                               (int (.height (:size data))))
                          (map #(:id %)
                               (:camera_data data)))
+        file_name (reduce #(str %1 "_" %2)
+                          (.format (SimpleDateFormat. "dd-MM-yyyy_HH:mm:ssZ")
+                                   (Date.))
+                          (map #(:id %)
+                               (:camera_data data)))
         output_dir (File. ^File (:directory @*params)
-                          ^String dir_name)]
+                          ^String dir_name)
+        output_file (File. ^File output_dir
+                           ^String file_name)]
     (commons/prep-dirs output_dir)
-    ;TODO SERIALIZE
-    )
-  )
+    (with-open [o (FileOutputStream. output_file)]
+      (.write o ^bytes (nippy/freeze data)))
+    (log/info "Calibration data saved to file: " output_file)))
 
 (defn calibrate-pair
   "Calibrates stereo camera and writes result somewhere"
@@ -363,21 +372,21 @@
             pair)
       (save-calibrated
         (CalibrationData. img_size
-                           rotation_mtx
-                           translation_mtx
-                           essential_mtx
-                           fundamental_mtx
-                           disp_to_depth_mtx
-                           fixed_dsp_dpt_mtx
-                           (map #(CameraData. (:id %)
-                                               (:cam_mtx %)
-                                               (:dist_cf %)
-                                               (:rect_tr %)
-                                               (:prj_mtx %)
-                                               (:roi_mtx %)
-                                               (:undistortion_map %)
-                                               (:rectification_map %))
-                                pair)))
+                          rotation_mtx
+                          translation_mtx
+                          essential_mtx
+                          fundamental_mtx
+                          disp_to_depth_mtx
+                          fixed_dsp_dpt_mtx
+                          (map #(CameraData. (:id %)
+                                             (:cam_mtx %)
+                                             (:dist_cf %)
+                                             (:rect_tr %)
+                                             (:prj_mtx %)
+                                             (:roi_mtx %)
+                                             (:undistortion_map %)
+                                             (:rectification_map %))
+                               pair)))
       )))
 
 (defn stereo-calibration

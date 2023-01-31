@@ -34,7 +34,7 @@
   [v]
   (-> v (flatten) (vec) (int-array) (MatOfInt.)))
 
-(defn mat-to-bytes
+(defn image-mat-to-bytes
   "Transforms Mat to java array of bytes."
   {:tag    bytes
    :static true}

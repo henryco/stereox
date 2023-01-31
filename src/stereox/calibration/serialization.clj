@@ -94,8 +94,8 @@
                                      (read-camera-data is))
                                    sequence)))))
 
-(nippy/extend-freeze CameraData :serialization/camera-data [wsso s] (write-camera-data o s))
+(nippy/extend-freeze CameraData :serialization/camera-data [o s] (write-camera-data o s))
 (nippy/extend-thaw :serialization/camera-data [s] (read-camera-data s))
 
-(nippy/extend-freeze CalibrationData :serialization/calibration-data [wsso s] (write-calibration-data o s))
+(nippy/extend-freeze CalibrationData :serialization/calibration-data [o s] (write-calibration-data o s))
 (nippy/extend-thaw :serialization/calibration-data [s] (read-calibration-data s))

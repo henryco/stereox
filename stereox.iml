@@ -19,7 +19,7 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="Leiningen: cljfx:1.7.22" level="project" />
     <orderEntry type="library" name="Leiningen: cljfx:1.7.22:jdk11" level="project" />
-    <orderEntry type="library" name="Leiningen: com.taoensso/encore:3.21.0" level="project" />
+    <orderEntry type="library" name="Leiningen: com.taoensso/encore:3.23.0" level="project" />
     <orderEntry type="library" name="Leiningen: com.taoensso/nippy:3.2.0" level="project" />
     <orderEntry type="library" name="Leiningen: com.taoensso/timbre:5.2.1" level="project" />
     <orderEntry type="library" name="Leiningen: com.taoensso/truss:1.6.0" level="project" />

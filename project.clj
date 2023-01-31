@@ -7,8 +7,8 @@
   :dependencies [[org.clojure/tools.cli "1.0.214"]
                  [org.clojure/clojure "1.11.1"]
                  [org.openpnp/opencv "4.6.0-0"]
-                 [com.taoensso/timbre "5.2.1"]
                  [com.taoensso/nippy "3.2.0"]
+                 [com.taoensso/timbre "5.2.1"]
                  [cljfx "1.7.22"]
                  ]
   :main stereox.core)
