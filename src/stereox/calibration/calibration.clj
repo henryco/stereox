@@ -12,7 +12,8 @@
            (javafx.scene.image Image)
            (org.opencv.calib3d Calib3d)
            (org.opencv.core CvType Mat MatOfFloat4 MatOfPoint2f Rect Size TermCriteria)
-           (org.opencv.imgproc Imgproc))
+           (org.opencv.imgproc Imgproc)
+           (stereox.calibration.serialization CalibrationData CameraData))
   (:gen-class))
 
 (defrecord Props
@@ -244,25 +245,7 @@
                     (-> data (first) (:image) (.size))))
   )
 
-(defrecord CameraData
-  [^String id
-   ^Mat camera_matrix
-   ^Mat distortion_coefficients
-   ^Mat rectification_transformation
-   ^Mat projection_matrix
-   ^Rect valid_pixels_roi
-   ^Mat undistortion_map
-   ^Mat rectification_map])
 
-(defrecord CalibrationData
-  [^Size size
-   ^Mat rotation_matrix
-   ^Mat translation_matrix
-   ^Mat essential_matrix
-   ^Mat fundamental_matrix
-   ^Mat disparity_to_depth_matrix
-   ^Mat disparity_to_depth_matrix_v2
-   camera_data])
 
 (defn save-calibrated
   "Save calibrated data"
@@ -379,14 +362,14 @@
                                               (:rectification_map %))
             pair)
       (save-calibrated
-        (->CalibrationData img_size
+        (CalibrationData. img_size
                            rotation_mtx
                            translation_mtx
                            essential_mtx
                            fundamental_mtx
                            disp_to_depth_mtx
                            fixed_dsp_dpt_mtx
-                           (map #(->CameraData (:id %)
+                           (map #(CameraData. (:id %)
                                                (:cam_mtx %)
                                                (:dist_cf %)
                                                (:rect_tr %)
