@@ -166,6 +166,28 @@
       (.putDouble buffer (aget array i)))
     (.array buffer)))
 
+(defn mat-by-depth-type
+  {:tag    Mat
+   :static true}
+  [type array ^Mat mat]
+  (let [size (- (alength array) 16)
+        copy (let [c (byte-array size)]
+               (System/arraycopy array 16 c 0 size) c)
+        buff (ByteBuffer/wrap copy)]
+    (if (or (= type CvType/CV_8U)
+            (= type CvType/CV_8S))
+      (.put mat 0 0 (.array buff)))
+    (if (or (= type CvType/CV_16U)
+            (= type CvType/CV_16S))
+      (.put mat 0 0 (.array (.asShortBuffer buff))))
+    (if (= type CvType/CV_32S)
+      (.put mat 0 0 (.array (.asIntBuffer buff))))
+    (if (= type CvType/CV_32F)
+      (.put mat 0 0 (.array (.asFloatBuffer buff))))
+    (if (= type CvType/CV_64F)
+      (.put mat 0 0 (.array (.asDoubleBuffer buff))))
+    mat))
+
 (defn array-by-depth-type
   "Resolve matrix type and writes to byte array"
   {:static true}
@@ -189,32 +211,31 @@
   {:tag    bytes
    :static true}
   [^Mat mat]
-  (let [rows (.rows mat)
-        cols (.cols mat)
-        type (.type mat)
+  (let [type (.type mat)
         dept (.depth mat)
-        array (array-by-depth-type dept mat)
-        size (alength array)]
+        rows (.rows mat)
+        cols (.cols mat)
+        array (array-by-depth-type dept mat)]
     (.array
-      (doto (ByteBuffer/allocate (+ size 16))
-        (.putInt rows)
-        (.putInt cols)
+      (doto (ByteBuffer/allocate (+ (alength array) 16))
         (.putInt type)
         (.putInt dept)
+        (.putInt rows)
+        (.putInt cols)
         (.put ^bytes array)))))
 
-(defn bytes-to-mat                                          ;FIXME
+(defn bytes-to-mat
   "Converts byte array to cv:matrix"
   {:tag    Mat
    :static true}
   [^bytes bytes]
   (let [buffer (ByteBuffer/wrap bytes)
-        rows (.getInt buffer)
-        cols (.getInt buffer)
         type (.getInt buffer)
-        array (.array buffer)
-        mat (Mat. rows cols type)
-        length (- (alength array) 12)]
-
-    (.put mat 0 0 buffer 12 length)
-    mat))
+        dept (.getInt buffer)
+        rows (.getInt buffer)
+        cols (.getInt buffer)]
+    (mat-by-depth-type dept
+                       (.array buffer)
+                       (Mat. rows
+                             cols
+                             type))))
