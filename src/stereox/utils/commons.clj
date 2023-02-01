@@ -1,7 +1,7 @@
 (ns stereox.utils.commons
   (:import (java.io File)
            (java.nio ByteBuffer)
-           (org.opencv.core Mat MatOfByte MatOfInt MatOfPoint3f Point3 Rect Size)
+           (org.opencv.core CvType Mat MatOfByte MatOfInt MatOfPoint3f Point3 Rect Size)
            (org.opencv.imgcodecs Imgcodecs)
            (org.opencv.imgproc Imgproc))
   (:gen-class))
@@ -107,6 +107,83 @@
         h (.getInt buffer)]
     (Rect. x y w h)))
 
+(defn write-8US
+  "Write matrix of BYTE to byte array"
+  [^Mat mat]
+  (let [size (int (* (.total mat)
+                     (.channels mat)))
+        buffer (ByteBuffer/allocate size)
+        array (byte-array size)]
+    (.get mat 0 0 array)
+    (.put buffer array)
+    (.array buffer)))
+
+(defn write-16US
+  "Write matrix of SHORT to byte array"
+  [^Mat mat]
+  (let [size (int (* (.total mat)
+                     (.channels mat)))
+        buffer (ByteBuffer/allocate size)
+        array (short-array size)]
+    (.get mat 0 0 array)
+    (for [i (range size)]
+      (.putShort buffer (aget array i)))
+    (.array buffer)))
+
+(defn write-32S
+  "Write matrix of INT to byte array"
+  [^Mat mat]
+  (let [size (int (* (.total mat)
+                     (.channels mat)))
+        buffer (ByteBuffer/allocate size)
+        array (int-array size)]
+    (.get mat 0 0 array)
+    (for [i (range size)]
+      (.putInt buffer (aget array i)))
+    (.array buffer)))
+
+(defn write-32F
+  "Write matrix of FLOAT to byte array"
+  [^Mat mat]
+  (let [size (int (* (.total mat)
+                     (.channels mat)))
+        buffer (ByteBuffer/allocate size)
+        array (float-array size)]
+    (.get mat 0 0 array)
+    (for [i (range size)]
+      (.putFloat buffer (aget array i)))
+    (.array buffer)))
+
+(defn write-64F
+  "Write matrix of DOUBLE to byte array"
+  [^Mat mat]
+  (let [size (int (* (.total mat)
+                     (.channels mat)))
+        buffer (ByteBuffer/allocate size)
+        array (double-array size)]
+    (.get mat 0 0 array)
+    (for [i (range size)]
+      (.putDouble buffer (aget array i)))
+    (.array buffer)))
+
+(defn array-by-depth-type
+  "Resolve matrix type and writes to byte array"
+  {:static true}
+  [^Integer type ^Mat mat]
+  (if (or (= type CvType/CV_8U)
+          (= type CvType/CV_8S))
+    (write-8US mat)
+    (if (or (= type CvType/CV_16U)
+            (= type CvType/CV_16S))
+      (write-16US mat)
+      (if (= type CvType/CV_32S)
+        (write-32S mat)
+        (if (= type CvType/CV_32F)
+          (write-32F mat)
+          (if (= type CvType/CV_64F)
+            (write-64F mat)
+            (throw (Exception. "Unsupported matrix type!!!"))))))))
+
 (defn mat-to-bytes
   "Converts cv:matrix to byte array"
   {:tag    bytes
@@ -115,18 +192,18 @@
   (let [rows (.rows mat)
         cols (.cols mat)
         type (.type mat)
-        size (* (.total mat)
-                (.elemSize mat))
-        bytes (byte-array size)]
-    (.get mat 0 0 bytes)
+        dept (.depth mat)
+        array (array-by-depth-type dept mat)
+        size (alength array)]
     (.array
-      (doto (ByteBuffer/allocate (+ size 12))
+      (doto (ByteBuffer/allocate (+ size 16))
         (.putInt rows)
         (.putInt cols)
         (.putInt type)
-        (.put bytes)))))
+        (.putInt dept)
+        (.put ^bytes array)))))
 
-(defn bytes-to-mat
+(defn bytes-to-mat                                          ;FIXME
   "Converts byte array to cv:matrix"
   {:tag    Mat
    :static true}
@@ -138,5 +215,6 @@
         array (.array buffer)
         mat (Mat. rows cols type)
         length (- (alength array) 12)]
-    (.put mat 0 0 array 12 length)
+
+    (.put mat 0 0 buffer 12 length)
     mat))
