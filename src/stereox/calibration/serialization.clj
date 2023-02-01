@@ -1,6 +1,7 @@
 (ns stereox.calibration.serialization
   (:require [taoensso.nippy :as nippy]
-            [stereox.utils.commons :as cc])
+            [stereox.utils.commons :as cc]
+            [taoensso.timbre :as log])
   (:import (java.io DataInput DataOutput)
            (org.opencv.core Mat Rect Size))
   (:gen-class))
@@ -39,6 +40,7 @@
   "Writes camera data object to output stream"
   {:static true}
   [^CameraData data ^DataOutput os]
+  (log/info "WRITE_CAMERA_DATA")
   (.writeUTF os (:id data))
   (write-bytes os (cc/mat-to-bytes (:camera_matrix data)))
   (write-bytes os (cc/mat-to-bytes (:distortion_coefficients data)))
@@ -66,6 +68,7 @@
   "Writes calibration data object to output stream"
   {:static true}
   [^CalibrationData data ^DataOutput os]
+  (log/info "WRITE_CALIBRATION_DATA")
   (write-bytes os (cc/size-to-bytes (:size data)))
   (write-bytes os (cc/mat-to-bytes (:rotation_matrix data)))
   (write-bytes os (cc/mat-to-bytes (:translation_matrix data)))

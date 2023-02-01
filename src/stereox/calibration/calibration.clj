@@ -7,7 +7,7 @@
             [taoensso.nippy :as nippy]
             [taoensso.timbre :as log])
   (:import (clojure.lang PersistentVector)
-           (java.io ByteArrayInputStream File FileOutputStream)
+           (java.io ByteArrayInputStream File FileInputStream FileOutputStream)
            (java.text SimpleDateFormat)
            (java.util ArrayList Date)
            (javafx.animation AnimationTimer)
@@ -268,9 +268,20 @@
         output_file (File. ^File output_dir
                            ^String file_name)]
     (commons/prep-dirs output_dir)
+    (log/info "PREPARED DATA: " data)
+
     (with-open [o (FileOutputStream. output_file)]
       (.write o ^bytes (nippy/freeze data)))
-    (log/info "Calibration data saved to file: " output_file)))
+
+    (log/info ">")
+    (log/info "Calibration data saved to file: " output_file)
+    (log/info ">")
+
+    (with-open [i (FileInputStream. output_file)]           ;FIXME TEST REMOVE LATER
+      (let [bts (.readAllBytes i)
+            rsl (nippy/thaw bts)]
+        (log/info "decoded results: " rsl)))
+    ))
 
 (defn calibrate-pair
   "Calibrates stereo camera and writes result somewhere"
