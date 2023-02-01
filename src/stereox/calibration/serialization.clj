@@ -1,7 +1,6 @@
 (ns stereox.calibration.serialization
-  (:require [taoensso.nippy :as nippy]
-            [stereox.utils.commons :as cc]
-            [taoensso.timbre :as log])
+  (:require [stereox.utils.commons :as cc]
+            [taoensso.nippy :as nippy])
   (:import (java.io DataInput DataOutput File FileInputStream FileOutputStream)
            (org.opencv.core Mat Rect Size))
   (:gen-class))
