@@ -1,5 +1,5 @@
 (ns stereox.utils.commons
-  (:import (java.io File)
+  (:import (java.io DataInput DataOutput File)
            (java.nio ByteBuffer)
            (org.opencv.core CvType Mat MatOfByte MatOfInt MatOfPoint3f Point3 Rect Size)
            (org.opencv.imgcodecs Imgcodecs)
@@ -123,11 +123,11 @@
   [^Mat mat]
   (let [size (int (* (.total mat)
                      (.channels mat)))
-        buffer (ByteBuffer/allocate size)
+        buffer (ByteBuffer/allocate (* (.elemSize mat) size))
         array (short-array size)]
     (.get mat 0 0 array)
-    (for [i (range size)]
-      (.putShort buffer (aget array i)))
+    (doall (for [i (range size)]
+             (.putShort buffer (aget array i))))
     (.array buffer)))
 
 (defn write-32S
@@ -135,11 +135,11 @@
   [^Mat mat]
   (let [size (int (* (.total mat)
                      (.channels mat)))
-        buffer (ByteBuffer/allocate size)
+        buffer (ByteBuffer/allocate (* (.elemSize mat) size))
         array (int-array size)]
     (.get mat 0 0 array)
-    (for [i (range size)]
-      (.putInt buffer (aget array i)))
+    (doall (for [i (range size)]
+             (.putInt buffer (aget array i))))
     (.array buffer)))
 
 (defn write-32F
@@ -147,11 +147,11 @@
   [^Mat mat]
   (let [size (int (* (.total mat)
                      (.channels mat)))
-        buffer (ByteBuffer/allocate size)
+        buffer (ByteBuffer/allocate (* (.elemSize mat) size))
         array (float-array size)]
     (.get mat 0 0 array)
-    (for [i (range size)]
-      (.putFloat buffer (aget array i)))
+    (doall (for [i (range size)]
+             (.putFloat buffer (aget array i))))
     (.array buffer)))
 
 (defn write-64F
@@ -159,11 +159,11 @@
   [^Mat mat]
   (let [size (int (* (.total mat)
                      (.channels mat)))
-        buffer (ByteBuffer/allocate size)
+        buffer (ByteBuffer/allocate (* (.elemSize mat) size))
         array (double-array size)]
     (.get mat 0 0 array)
-    (for [i (range size)]
-      (.putDouble buffer (aget array i)))
+    (doall (for [i (range size)]
+             (.putDouble buffer (aget array i))))
     (.array buffer)))
 
 (defn mat-by-depth-type
@@ -180,13 +180,33 @@
       (.put mat 0 0 (.array buff)))
     (if (or (= type CvType/CV_16U)
             (= type CvType/CV_16S))
-      (.put mat 0 0 (.array (.asShortBuffer buff))))
+      (let [dest (short-array (int (/ size 2)))]
+        (loop [i 0]
+          (when (.hasRemaining buff)
+            (aset dest i (.getShort buff))
+            (recur (+ i 1))))
+        (.put mat 0 0 dest)))
     (if (= type CvType/CV_32S)
-      (.put mat 0 0 (.array (.asIntBuffer buff))))
+      (let [dest (int-array (int (/ size 4)))]
+        (loop [i 0]
+          (when (.hasRemaining buff)
+            (aset dest i (.getInt buff))
+            (recur (+ i 1))))
+        (.put mat 0 0 dest)))
     (if (= type CvType/CV_32F)
-      (.put mat 0 0 (.array (.asFloatBuffer buff))))
+      (let [dest (float-array (int (/ size 4)))]
+        (loop [i 0]
+          (when (.hasRemaining buff)
+            (aset dest i (.getFloat buff))
+            (recur (+ i 1))))
+        (.put mat 0 0 dest)))
     (if (= type CvType/CV_64F)
-      (.put mat 0 0 (.array (.asDoubleBuffer buff))))
+      (let [dest (double-array (int (/ size 8)))]
+        (loop [i 0]
+          (when (.hasRemaining buff)
+            (aset dest i (.getDouble buff))
+            (recur (+ i 1))))
+        (.put mat 0 0 dest)))
     mat))
 
 (defn array-by-depth-type
@@ -240,3 +260,20 @@
                        (Mat. rows
                              cols
                              type))))
+
+(defn write-bytes
+  "Write byte array to DataOutput"
+  {:static true}
+  [^DataOutput os ^bytes bytes]
+  (.writeInt os (alength bytes))
+  (.write os ^bytes bytes))
+
+(defn read-bytes
+  "Read byte array from DataInput"
+  {:tag    bytes
+   :static true}
+  [^DataInput is]
+  (let [size (.readInt is)
+        bytes (byte-array size)]
+    (.readFully is bytes)
+    bytes))

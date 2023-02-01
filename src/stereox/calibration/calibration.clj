@@ -1,13 +1,12 @@
 (ns stereox.calibration.calibration
   (:require [cljfx.api :as fx]
-            [stereox.calibration.serialization]
+            [stereox.calibration.serialization :as serial]
             [stereox.camera.stereo-camera :as camera]
             [stereox.utils.commons :as commons]
             [stereox.utils.timer :as timer]
-            [taoensso.nippy :as nippy]
             [taoensso.timbre :as log])
   (:import (clojure.lang PersistentVector)
-           (java.io ByteArrayInputStream File FileInputStream FileOutputStream)
+           (java.io ByteArrayInputStream File)
            (java.text SimpleDateFormat)
            (java.util ArrayList Date)
            (javafx.animation AnimationTimer)
@@ -259,29 +258,16 @@
                          (map #(:id %)
                               (:camera_data data)))
         file_name (reduce #(str %1 "_" %2)
-                          (.format (SimpleDateFormat. "ddMMyyyyHHmmSSS")
+                          (.format (SimpleDateFormat. "yyyyMMddHHmmSSS")
                                    (Date.))
                           (map #(:id %)
                                (:camera_data data)))
         output_dir (File. ^File (:directory @*params)
                           ^String dir_name)
         output_file (File. ^File output_dir
-                           ^String file_name)]
+                           (str file_name ".soxcd"))]
     (commons/prep-dirs output_dir)
-    (log/info "PREPARED DATA: " data)
-
-    (with-open [o (FileOutputStream. output_file)]
-      (.write o ^bytes (nippy/freeze data)))
-
-    (log/info ">")
-    (log/info "Calibration data saved to file: " output_file)
-    (log/info ">")
-
-    (with-open [i (FileInputStream. output_file)]           ;FIXME TEST REMOVE LATER
-      (let [bts (.readAllBytes i)
-            rsl (nippy/thaw bts)]
-        (log/info "decoded results: " rsl)))
-    ))
+    (serial/calibration-to-file data output_file)))
 
 (defn calibrate-pair
   "Calibrates stereo camera and writes result somewhere"

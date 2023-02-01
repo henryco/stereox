@@ -2,7 +2,7 @@
   (:require [taoensso.nippy :as nippy]
             [stereox.utils.commons :as cc]
             [taoensso.timbre :as log])
-  (:import (java.io DataInput DataOutput)
+  (:import (java.io DataInput DataOutput File FileInputStream FileOutputStream)
            (org.opencv.core Mat Rect Size))
   (:gen-class))
 
@@ -26,72 +26,60 @@
    ^Mat disparity_to_depth_matrix_v2
    camera_data])
 
-(defn write-bytes [^DataOutput os ^bytes bytes]
-  (.writeInt os (alength bytes))
-  (.write os ^bytes bytes))
-
-(defn read-bytes [^DataInput is]
-  (let [size (.readInt is)
-        bytes (byte-array size)]
-    (.readFully is bytes)
-    bytes))
-
-(defn write-camera-data
+(defn- write-camera-data
   "Writes camera data object to output stream"
   {:static true}
   [^CameraData data ^DataOutput os]
-  (log/info "WRITE_CAMERA_DATA")
   (.writeUTF os (:id data))
-  (write-bytes os (cc/mat-to-bytes (:camera_matrix data)))
-  (write-bytes os (cc/mat-to-bytes (:distortion_coefficients data)))
-  (write-bytes os (cc/mat-to-bytes (:rectification_transformation data)))
-  (write-bytes os (cc/mat-to-bytes (:projection_matrix data)))
-  (write-bytes os (cc/rect-to-bytes (:valid_pixels_roi data)))
-  (write-bytes os (cc/mat-to-bytes (:undistortion_map data)))
-  (write-bytes os (cc/mat-to-bytes (:rectification_map data))))
+  (cc/write-bytes os (cc/mat-to-bytes (:camera_matrix data)))
+  (cc/write-bytes os (cc/mat-to-bytes (:distortion_coefficients data)))
+  (cc/write-bytes os (cc/mat-to-bytes (:rectification_transformation data)))
+  (cc/write-bytes os (cc/mat-to-bytes (:projection_matrix data)))
+  (cc/write-bytes os (cc/rect-to-bytes (:valid_pixels_roi data)))
+  (cc/write-bytes os (cc/mat-to-bytes (:undistortion_map data)))
+  (cc/write-bytes os (cc/mat-to-bytes (:rectification_map data))))
 
-(defn read-camera-data
+(defn- read-camera-data
   "Reads camera data object from input stream"
   {:tag    CameraData
    :static true}
   [^DataInput is]
   (->CameraData (.readUTF is)
-                (cc/bytes-to-mat (read-bytes is))
-                (cc/bytes-to-mat (read-bytes is))
-                (cc/bytes-to-mat (read-bytes is))
-                (cc/bytes-to-mat (read-bytes is))
-                (cc/bytes-to-rect (read-bytes is))
-                (cc/bytes-to-mat (read-bytes is))
-                (cc/bytes-to-mat (read-bytes is))))
+                (cc/bytes-to-mat (cc/read-bytes is))
+                (cc/bytes-to-mat (cc/read-bytes is))
+                (cc/bytes-to-mat (cc/read-bytes is))
+                (cc/bytes-to-mat (cc/read-bytes is))
+                (cc/bytes-to-rect (cc/read-bytes is))
+                (cc/bytes-to-mat (cc/read-bytes is))
+                (cc/bytes-to-mat (cc/read-bytes is))))
 
-(defn write-calibration-data
+(defn- write-calibration-data
   "Writes calibration data object to output stream"
   {:static true}
   [^CalibrationData data ^DataOutput os]
-  (log/info "WRITE_CALIBRATION_DATA")
-  (write-bytes os (cc/size-to-bytes (:size data)))
-  (write-bytes os (cc/mat-to-bytes (:rotation_matrix data)))
-  (write-bytes os (cc/mat-to-bytes (:translation_matrix data)))
-  (write-bytes os (cc/mat-to-bytes (:essential_matrix data)))
-  (write-bytes os (cc/mat-to-bytes (:fundamental_matrix data)))
-  (write-bytes os (cc/mat-to-bytes (:disparity_to_depth_matrix data)))
-  (write-bytes os (cc/mat-to-bytes (:disparity_to_depth_matrix_v2 data)))
+  (cc/write-bytes os (cc/size-to-bytes (:size data)))
+  (cc/write-bytes os (cc/mat-to-bytes (:rotation_matrix data)))
+  (cc/write-bytes os (cc/mat-to-bytes (:translation_matrix data)))
+  (cc/write-bytes os (cc/mat-to-bytes (:essential_matrix data)))
+  (cc/write-bytes os (cc/mat-to-bytes (:fundamental_matrix data)))
+  (cc/write-bytes os (cc/mat-to-bytes (:disparity_to_depth_matrix data)))
+  (cc/write-bytes os (cc/mat-to-bytes (:disparity_to_depth_matrix_v2 data)))
   (let [sequence (:camera_data data)]
     (.writeInt os (count sequence))
     (run! #(write-camera-data % os) sequence)))
 
-(defn read-calibration-data
+(defn- read-calibration-data
   "Reads calibration data object from input stream"
   {:tag    CalibrationData
    :static true}
   [^DataInput is]
-  (->CalibrationData (cc/bytes-to-size (read-bytes is))
-                     (cc/bytes-to-mat (read-bytes is))
-                     (cc/bytes-to-mat (read-bytes is))
-                     (cc/bytes-to-mat (read-bytes is))
-                     (cc/bytes-to-mat (read-bytes is))
-                     (cc/bytes-to-mat (read-bytes is))
-                     (cc/bytes-to-mat (read-bytes is))
+  (->CalibrationData (cc/bytes-to-size (cc/read-bytes is))
+                     (cc/bytes-to-mat (cc/read-bytes is))
+                     (cc/bytes-to-mat (cc/read-bytes is))
+                     (cc/bytes-to-mat (cc/read-bytes is))
+                     (cc/bytes-to-mat (cc/read-bytes is))
+                     (cc/bytes-to-mat (cc/read-bytes is))
+                     (cc/bytes-to-mat (cc/read-bytes is))
                      (let [sequence (range (.readInt is))]
                        (doall (map (fn [& _]
                                      (read-camera-data is))
@@ -102,3 +90,20 @@
 
 (nippy/extend-freeze CalibrationData :serialization/calibration-data [o s] (write-calibration-data o s))
 (nippy/extend-thaw :serialization/calibration-data [s] (read-calibration-data s))
+
+(defn calibration-to-file
+  "Writes calibration data to file"
+  {:static true}
+  [^CalibrationData data ^File file]
+  (with-open [o (FileOutputStream. file)]
+    (.write o ^bytes (nippy/freeze data))))
+
+(defn calibration-from-file
+  "Reads calibration data from file"
+  {:tag    CalibrationData
+   :static true}
+  [^File file]
+  (with-open [i (FileInputStream. file)]
+    (let [bts (.readAllBytes i)
+          rsl (nippy/thaw bts)]
+      rsl)))
