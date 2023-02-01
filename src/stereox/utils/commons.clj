@@ -167,6 +167,7 @@
     (.array buffer)))
 
 (defn mat-by-depth-type
+  "Resolve required array type and fill matrix"
   {:tag    Mat
    :static true}
   [type array ^Mat mat]
