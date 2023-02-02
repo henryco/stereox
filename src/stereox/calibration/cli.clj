@@ -2,7 +2,8 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.tools.cli :as cli]
-            [stereox.calibration.calibration :as cbr]))
+            [stereox.calibration.calibration :as cbr])
+  (:gen-class))
 
 (def ^:private cli-options
   [["-r" "--rows ROWS" "Number of rows"
