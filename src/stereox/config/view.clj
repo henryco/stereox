@@ -1,8 +1,10 @@
 (ns stereox.config.view
-  (:gen-class)
-  (:require [cljfx.api :as fx])
-  (:import (javafx.animation AnimationTimer)
-           (javafx.application Platform)))
+  (:require [stereox.utils.guifx :as gfx])
+  (:gen-class))
+
+(def ^:private *gui
+  "GuiFx"
+  (atom nil))
 
 (def ^:private *state
   "JavaFX UI state"
@@ -14,23 +16,9 @@
          :height 720
          }))
 
-(defn- start-ui-loop [func]
-  (.start
-    (proxy [AnimationTimer] []
-      (handle [_]
-        (if (:alive @*state)
-          (func))))))
-
-(defn- create-renderer [root]
-  (fx/create-renderer
-    :middleware (fx/wrap-map-desc assoc :fx/type root)))
-
 (defn- shutdown [& {:keys [code]}]
   (try
-    ; TODO
-    (catch Exception e (.printStackTrace e)))
-  (try
-    (Platform/exit)
+    (gfx/shutdown @*gui)
     (catch Exception e (.printStackTrace e))
     (finally (System/exit (if (some? code) code 0)))))
 
@@ -81,6 +69,5 @@
 
 (defn start-gui [& args]
   ; TODO
-  (fx/mount-renderer *state (create-renderer root))
-  (start-ui-loop main-cb-loop)
+  (reset! *gui (gfx/create-guifx *state root main-cb-loop))
   )
