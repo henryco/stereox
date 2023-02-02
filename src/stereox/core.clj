@@ -25,9 +25,7 @@
         "Modules:"
         "  calibration"
         "  patterns"
-        "  vision"
-
-        ]
+        "  vision"]
        (string/join \newline)))
 
 (defn validate-args [args]
