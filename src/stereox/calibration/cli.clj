@@ -131,5 +131,4 @@
   (let [{:keys [options exit-message ok?]} (validate-args args)]
     (if exit-message
       (exit (if ok? 0 1) exit-message)
-      (cbr/calibrate options)
-      )))
+      (cbr/calibrate options))))
