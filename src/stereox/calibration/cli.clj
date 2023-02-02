@@ -116,7 +116,7 @@
        (string/join \newline)))
 
 (defn- validate-args [args]
-  (let [{:keys [arguments options errors summary]} (cli/parse-opts args cli-options :in-order true)]
+  (let [{:keys [options errors summary]} (cli/parse-opts args cli-options :in-order true)]
     (cond
       (:help options)
       {:exit-message (usage summary) :ok? true}
