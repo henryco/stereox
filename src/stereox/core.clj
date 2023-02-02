@@ -1,6 +1,7 @@
 (ns stereox.core
   (:require
     [stereox.calibration.cli :as cbr]
+    [stereox.pmc.cli :as pmc]
     [clojure.string :as string]
     [clojure.tools.cli :as cli])
   (:gen-class))
@@ -24,8 +25,8 @@
         ""
         "Modules:"
         "  calibration"
-        "  patterns"
-        "  vision"]
+        "  vision"
+        "  pmc"]
        (string/join \newline)))
 
 (defn validate-args [args]
@@ -47,6 +48,6 @@
       (exit (if ok? 0 1) exit-message)
       (case action
         "calibration" (cbr/calibration (drop 1 args))
-        "patterns" (throw (Exception. "TODO"))
         "vision" (throw (Exception. "TODO"))
+        "pmc" (pmc/pattern-matching (drop 1 args))
         (exit 1 "Try to use --help")))))
