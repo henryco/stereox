@@ -1,4 +1,4 @@
-(ns stereox.pmc.cli
+(ns stereox.config.cli
   (:gen-class)
   (:require [clojure.string :as string]))
 

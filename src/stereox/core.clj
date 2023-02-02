@@ -25,8 +25,8 @@
         ""
         "Modules:"
         "  calibration"
-        "  vision"
-        "  pmc"]
+        "  config"
+        "  vision"]
        (string/join \newline)))
 
 (defn validate-args [args]
@@ -48,6 +48,6 @@
       (exit (if ok? 0 1) exit-message)
       (case action
         "calibration" (cbr/calibration (drop 1 args))
+        "config" (pmc/pattern-matching (drop 1 args))
         "vision" (throw (Exception. "TODO"))
-        "pmc" (pmc/pattern-matching (drop 1 args))
         (exit 1 "Try to use --help")))))
