@@ -1,7 +1,7 @@
 (ns stereox.core
   (:require
+    [stereox.config.cli :as config]
     [stereox.calibration.cli :as cbr]
-    [stereox.pmc.cli :as pmc]
     [clojure.string :as string]
     [clojure.tools.cli :as cli])
   (:gen-class))
@@ -48,6 +48,6 @@
       (exit (if ok? 0 1) exit-message)
       (case action
         "calibration" (cbr/calibration (drop 1 args))
-        "config" (pmc/pattern-matching (drop 1 args))
+        "config" (config/pattern-matching (drop 1 args))
         "vision" (throw (Exception. "TODO"))
         (exit 1 "Try to use --help")))))

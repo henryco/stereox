@@ -68,8 +68,7 @@
          :width  nil
          :height nil
          :camera {:viewport {:width 0 :height 0 :min-x 0 :min-y 0}
-                  :image    ^Image []
-                  }
+                  :image    ^Image []}
          }))
 
 (defn image-adapt [matrices]
@@ -118,6 +117,13 @@
   (swap! *state assoc :width v)
   (on-win-change))
 
+(defn start-ui-loop [func]
+  (.start
+    (proxy [AnimationTimer] []
+      (handle [_]
+        (if (:alive @*state)
+          (func))))))
+
 (defn render-images [{:keys [camera scale]}]
   {:fx/type    :h-box
    :style      {:-fx-background-color :black
@@ -153,13 +159,6 @@
 (def ^:private renderer
   (fx/create-renderer
     :middleware (fx/wrap-map-desc assoc :fx/type root)))
-
-(defn start-ui-loop [func]
-  (.start
-    (proxy [AnimationTimer] []
-      (handle [_]
-        (if (:alive @*state)
-          (func))))))
 
 (defn calc-quality
   "Calculates quality flags for chessboard finder algorithm.

@@ -1,6 +1,8 @@
 (ns stereox.config.cli
   (:gen-class)
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]
+            [stereox.config.view :as view]
+            ))
 
 (def cli-options
   [["-h" "--help"]])
@@ -12,8 +14,8 @@
   (println msg)
   (System/exit status))
 
-(defn pattern-matching [args]
+(defn pattern-matching [& args]
   (println "PATTERN MATCHING")
-  (exit 0 "")
+  (view/start-gui args)
   ; TODO
   )
