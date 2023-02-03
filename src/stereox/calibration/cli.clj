@@ -108,7 +108,7 @@
   (System/exit status))
 
 (defn- usage [options-summary]
-  (->> ["StereoX - Stereo Vision, Calibration module."
+  (->> ["StereoX - Stereo Vision, CALIBRATION module."
         ""
         "For proper configuration first check your camera allowed properties: "
         "[  $ v4l2-ctl -d \"/dev/video${ID}\" --list-formats-ext  ]"
