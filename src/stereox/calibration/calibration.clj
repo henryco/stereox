@@ -21,6 +21,7 @@
 (defrecord Props
   [^PersistentVector ids
    ^File directory
+   ^Float square_size
    ^Integer rows
    ^Integer columns
    ^Integer quality
@@ -224,7 +225,8 @@
   [id data]
   (log/info "preparing calibration parameters")
   (let [obp (commons/obp-matrix (- (:columns @*params) 1)
-                                (- (:rows @*params) 1))
+                                (- (:rows @*params) 1)
+                                (:square_size @*params))
         obj_p (ArrayList.)
         img_p (ArrayList.)]
     (run! (fn [{:keys [^Mat image ^MatOfPoint2f corners]}]
@@ -444,6 +446,7 @@
 
 (defn calibrate [& {:keys [output-folder
                            images-number
+                           square-size
                            columns
                            quality
                            rows
@@ -453,9 +456,9 @@
                            ids
                            ] :as all}]
   ; setup calibration properties
-  (reset! *params (Props. ids output-folder rows
-                          columns quality delay
-                          images-number))
+  (reset! *params (->Props ids output-folder square-size
+                           rows columns quality delay
+                           images-number))
   ; setup camera
   (reset! *camera (camera/create all))
   ; setup timer

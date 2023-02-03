@@ -7,17 +7,17 @@
 
 (def ^:private cli-options
   [["-r" "--rows ROWS" "Number of rows"
-    :default 8
+    :default 7
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 5 % 0x10000) "Must be a number between 5 and 65536"]]
 
    ["-c" "--columns COLUMNS" "Number of columns"
-    :default 6
+    :default 10
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 5 % 0x10000) "Must be a number between 5 and 65536"]]
 
    ["-s" "--square-size SIZE" "Square size in cm"
-    :default 2.
+    :default 1.8
     :parse-fn #(Float/parseFloat %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 

@@ -51,16 +51,17 @@
   {:tag    MatOfPoint3f
    :static true}
   [^Integer cornersHorizontal
-   ^Integer cornersVertical]
-  (let [size (* cornersHorizontal cornersVertical)
-        mat (MatOfPoint3f.)]
+   ^Integer cornersVertical
+   ^Float size]
+  (let [mat (MatOfPoint3f.)]
     (doall
-      (for [j (range size)]
-        (let [x (int (/ j cornersHorizontal))
-              y (int (mod j cornersVertical))
-              p (into-array Point3 [(Point3. x y 0.0)])]
-          (.push_back mat (MatOfPoint3f.
-                            ^"[Lorg.opencv.core.Point3;" p)))))
+      (for [y (range cornersVertical)
+            x (range cornersHorizontal)]
+        (.push_back mat (MatOfPoint3f.
+                          ^"[Lorg.opencv.core.Point3;"
+                          (into-array Point3 [(Point3. (* size x)
+                                                       (* size y)
+                                                       0)])))))
     mat))
 
 (defn size-to-bytes
