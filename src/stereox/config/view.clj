@@ -1,6 +1,12 @@
 (ns stereox.config.view
-  (:require [stereox.utils.guifx :as gfx])
+  (:require [stereox.utils.guifx :as gfx]
+            [stereox.config.logic :as logic]
+            )
   (:gen-class))
+
+(def ^:private *logic
+  "Logic"
+  (atom nil))
 
 (def ^:private *gui
   "GuiFx"
@@ -67,7 +73,6 @@
   ; TODO
   )
 
-(defn start-gui [& args]
-  ; TODO
-  (reset! *gui (gfx/create-guifx *state root main-cb-loop))
-  )
+(defn start-gui [& {:as args}]
+  (reset! *logic (logic/configure args))
+  (reset! *gui (gfx/create-guifx *state root main-cb-loop)))
