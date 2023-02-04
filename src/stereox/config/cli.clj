@@ -40,7 +40,7 @@
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 300) "Must be a number between 0 and 300"]]
 
-   ["-o" "--output-folder FOLDER_NAME" "Folder to write calibration files to"
+   ["-o" "--output-folder FOLDER_NAME" "Folder to write configuration files to"
     :parse-fn #(io/file %)
     :missing "Output folder option is required"
     :validate [#(or (not (.exists %)) (.isDirectory %)) "File should be DIRECTORY or not exist"]]
