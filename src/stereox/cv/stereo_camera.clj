@@ -133,7 +133,6 @@
    :tag    StereoCamera}
   [^CameraProperties properties]
   ; basically just (StereoCamera. (atom (into {} io))
-  (println (pr-str properties))                             ; TODO REMOVE THIS LINE
   (StereoCamera.
     (atom
       (cw/postwalk

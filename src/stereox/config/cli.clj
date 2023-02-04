@@ -45,6 +45,11 @@
     :missing "Output folder option is required"
     :validate [#(or (not (.exists %)) (.isDirectory %)) "File should be DIRECTORY or not exist"]]
 
+   ["-c" "--config-folder FOLDER_NAME" "Folder with calibration files"
+    :parse-fn #(io/file %)
+    :missing "Config folder option is required"
+    :validate [#(or (not (.exists %)) (.isDirectory %)) "File should be DIRECTORY or not exist"]]
+
    [nil "--help"]])
 
 (defn- usage [options-summary]

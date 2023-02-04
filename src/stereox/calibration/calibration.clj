@@ -1,6 +1,6 @@
 (ns stereox.calibration.calibration
   (:require [cljfx.api :as fx]
-            [stereox.calibration.serialization :as serial]
+            [stereox.serialization.calibration :as serial]
             [stereox.cv.stereo-camera :as camera]
             [stereox.utils.commons :as commons]
             [stereox.utils.timer :as timer]
@@ -15,7 +15,7 @@
            (org.opencv.calib3d Calib3d)
            (org.opencv.core CvType Mat MatOfFloat4 MatOfPoint2f Rect Size TermCriteria)
            (org.opencv.imgproc Imgproc)
-           (stereox.calibration.serialization CalibrationData CameraData))
+           (stereox.serialization.calibration CalibrationData CameraData))
   (:gen-class))
 
 (defrecord Props
@@ -455,6 +455,7 @@
                            delay
                            ids
                            ] :as all}]
+  (log/info (pr-str all))                             ; TODO REMOVE THIS LINE
   ; setup calibration properties
   (reset! *params (->Props ids output-folder square-size
                            rows columns quality delay

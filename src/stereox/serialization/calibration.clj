@@ -1,4 +1,4 @@
-(ns stereox.calibration.serialization
+(ns stereox.serialization.calibration
   (:require [stereox.utils.commons :as cc]
             [taoensso.nippy :as nippy])
   (:import (java.io DataInput DataOutput File FileInputStream FileOutputStream)
