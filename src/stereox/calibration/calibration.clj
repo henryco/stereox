@@ -455,7 +455,7 @@
                            delay
                            ids
                            ] :as all}]
-  (log/info (pr-str all))                             ; TODO REMOVE THIS LINE
+  (log/info (pr-str all))
   ; setup calibration properties
   (reset! *params (->Props ids output-folder square-size
                            rows columns quality delay
