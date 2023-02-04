@@ -54,7 +54,7 @@
               o)
             ) 0 words))
 
-(defn list-candidate-files
+(defn list-candidates
   "Returns file candidates sorted lexically descend."
   {:static true
    :tag    PersistentVector}
@@ -84,15 +84,3 @@
         (if (nil? next)
           []
           (recur next width height postfix (flatten ids)))))))
-
-(defn list-calibration-candidates
-  "Returns file candidates for calibration
-  files sorted lexically descend."
-  {:static true
-   :tag    PersistentVector}
-  [^File parent width height & ids]
-  (list-candidate-files parent
-                        width
-                        height
-                        CALIB_POSTFIX
-                        (flatten ids)))
