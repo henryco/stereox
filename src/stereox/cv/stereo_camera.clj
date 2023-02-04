@@ -1,4 +1,4 @@
-(ns stereox.camera.stereo-camera
+(ns stereox.cv.stereo-camera
   (:require [clojure.walk :as cw]
             [stereox.utils.commons :as commons])
   (:import (clojure.lang Atom PersistentVector)

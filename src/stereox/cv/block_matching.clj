@@ -1,9 +1,8 @@
-(ns stereox.bm.block-matching
-
-  (:gen-class)
+(ns stereox.cv.block-matching
   (:import (clojure.lang Atom)
            (org.opencv.calib3d Calib3d StereoBM StereoMatcher)
-           (org.opencv.core Mat)))
+           (org.opencv.core Mat))
+  (:gen-class))
 
 (defn- ord
   "Returns original value if not nil,

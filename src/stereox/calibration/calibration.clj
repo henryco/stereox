@@ -1,7 +1,7 @@
 (ns stereox.calibration.calibration
   (:require [cljfx.api :as fx]
             [stereox.calibration.serialization :as serial]
-            [stereox.camera.stereo-camera :as camera]
+            [stereox.cv.stereo-camera :as camera]
             [stereox.utils.commons :as commons]
             [stereox.utils.timer :as timer]
             [taoensso.timbre :as log])
