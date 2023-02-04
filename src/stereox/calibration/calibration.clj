@@ -1,14 +1,14 @@
 (ns stereox.calibration.calibration
   (:require [cljfx.api :as fx]
-            [stereox.serialization.calibration :as serial]
             [stereox.cv.stereo-camera :as camera]
+            [stereox.serialization.calibration :as serial]
+            [stereox.serialization.utils :as su]
             [stereox.utils.commons :as commons]
             [stereox.utils.timer :as timer]
             [taoensso.timbre :as log])
   (:import (clojure.lang PersistentVector)
            (java.io ByteArrayInputStream File)
-           (java.text SimpleDateFormat)
-           (java.util ArrayList Date)
+           (java.util ArrayList)
            (javafx.animation AnimationTimer)
            (javafx.application Platform)
            (javafx.scene.image Image)
@@ -252,22 +252,17 @@
   "Save calibrated data"
   [^CalibrationData data]
   (log/info "Saving calibration results...")
-  (let [dir_name (reduce #(str %1 "_" %2)
-                         (str (int (.width (:size data)))
-                              "x"
-                              (int (.height (:size data))))
-                         (map #(:id %)
-                              (:camera_data data)))
-        file_name (reduce #(str %1 "_" %2)
-                          (.format (SimpleDateFormat. "yyyyMMddHHmmSSS")
-                                   (Date.))
-                          (map #(:id %)
-                               (:camera_data data)))
+  (let [id_list (map #(:id %)
+                     (:camera_data data))
+        dir_name (su/prepare-dir-name (.width (:size data))
+                                      (.height (:size data))
+                                      id_list)
+        file_name (su/prepare-calib-name id_list)
         output_dir (File. ^File (:directory @*params)
                           ^String dir_name)
         output_file (File. ^File output_dir
-                           (str file_name ".soxcd"))]
-    (commons/prep-dirs output_dir)
+                           ^String file_name)]
+    (su/prep-dirs output_dir)
     (serial/calibration-to-file data output_file)))
 
 (defn calibrate-pair

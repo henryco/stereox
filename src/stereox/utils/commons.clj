@@ -1,17 +1,10 @@
 (ns stereox.utils.commons
-  (:import (java.io DataInput DataOutput File)
+  (:import (java.io DataInput DataOutput)
            (java.nio ByteBuffer)
            (org.opencv.core CvType Mat MatOfByte MatOfInt MatOfPoint3f Point3 Rect Size)
            (org.opencv.imgcodecs Imgcodecs)
            (org.opencv.imgproc Imgproc))
   (:gen-class))
-
-(defn prep-dirs
-  "Creates directory if not exists"
-  {:static true}
-  [^File dir]
-  (if (not (.exists dir))
-    (.mkdirs dir)))
 
 (defn img-copy
   "Copy image matrix, optionally apply color change."
