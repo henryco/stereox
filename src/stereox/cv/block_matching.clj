@@ -10,24 +10,24 @@
   [v default]
   (if (nil? v) default v))
 
-(defprotocol IBlockMatcher
+(defprotocol BlockMatcher
   "Block matcher algorithm interface"
 
-  (setup [this & kv]
+  (setup [_] [_ map] [_ k v]
     "Update algorithm parameter (key value)")
 
-  (param [this key]
+  (param [_ key]
     "Get algorithm parameter")
 
-  (params [this]
+  (params [_]
     "Get algorithm parameters")
 
-  (disparity-map [this images]
+  (disparity-map [_ images]
     "Calculate disparity map
     Returns:
       org.opencv.core.Mat")
 
-  (project3d [this disparity disparity-to-depth-map]
+  (project3d [_ disparity disparity-to-depth-map]
     "Project image to 3D
     Returns:
       org.opencv.core.Mat")
@@ -41,18 +41,24 @@
 
 (deftype CpuStereoBM [^Atom *params
                       ^Atom *matcher]
-  IBlockMatcher
+  BlockMatcher
 
-  (setup [this & kv]
+  (setup [_]
+    (reset! *matcher (StereoBM/create (int (:search-range @*params))
+                                      (int (:window-size @*params)))))
+
+  (setup [this m]
     (dosync
-      (if (and (some? kv)
-               (< 0 (count kv)))
-        (swap! *params
-               #(map (fn [[k v]]
-                       (assoc % k v))
-                     (partition 2 kv))))
-      (reset! *matcher (StereoBM/create (int (:search-range @*params))
-                                        (int (:window-size @*params))))))
+      (swap! *params
+             #(map (fn [[k v]]
+                     (assoc % k v))
+                   (seq m)))
+      (setup this)))
+
+  (setup [this k v]
+    (dosync
+      (swap! *params assoc k v)
+      (setup this)))
 
   (param [_ key]
     (get @*params key))
