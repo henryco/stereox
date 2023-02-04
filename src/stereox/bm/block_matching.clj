@@ -2,7 +2,7 @@
 
   (:gen-class)
   (:import (clojure.lang Atom)
-           (org.opencv.calib3d Calib3d StereoMatcher)
+           (org.opencv.calib3d Calib3d StereoBM StereoMatcher)
            (org.opencv.core Mat)))
 
 (defn- ord
@@ -35,22 +35,25 @@
   )
 
 (defrecord StereoBMProp
-  [search-range
-   window-size
-   preset
-   missing
-   ddepth])
+  [^Integer search-range
+   ^Integer window-size
+   ^Boolean missing
+   ^Integer ddepth])
 
 (deftype CpuStereoBM [^Atom *params
-                      ^StereoMatcher matcher]
+                      ^Atom *matcher]
   IBlockMatcher
 
-  (setup [_ & kv]
-    ; TODO
-    (swap! *params
-           #(map (fn [[k v]]
-                   (assoc % k v))
-                 (partition 2 kv))))
+  (setup [this & kv]
+    (dosync
+      (if (and (some? kv)
+               (< 0 (count kv)))
+        (swap! *params
+               #(map (fn [[k v]]
+                       (assoc % k v))
+                     (partition 2 kv))))
+      (reset! *matcher (StereoBM/create (int (:search-range @*params))
+                                        (int (:window-size @*params))))))
 
   (param [_ key]
     (get @*params key))
@@ -60,7 +63,7 @@
 
   (disparity-map [_ [left right]]
     (let [disparity (Mat.)]
-      (.compute ^StereoMatcher matcher left right disparity)
+      (.compute ^StereoMatcher @*matcher left right disparity)
       disparity))
 
   (project3d [_ disparity disparity-to-depth-map]
@@ -69,3 +72,12 @@
           ddepth (-> @*params :ddepth (ord -1))]
       (Calib3d/reprojectImageTo3D disparity _3dImage disparity-to-depth-map handle ddepth)
       _3dImage)))
+
+(defn create-cpu-stereo-bm
+  ([^StereoBMProp props]
+   (let [matcher (->CpuStereoBM (atom (map->StereoBMProp props))
+                                (atom nil))]
+     (setup matcher)
+     matcher))
+  ([] (create-cpu-stereo-bm
+        (->StereoBMProp 16 21 false -1))))
