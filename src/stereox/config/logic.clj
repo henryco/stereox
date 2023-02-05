@@ -1,26 +1,40 @@
 (ns stereox.config.logic
   (:require [taoensso.timbre :as log]
+            [stereox.cv.stereo-normalizer :as nrm]
             [stereox.cv.stereo-camera :as camera]
             [stereox.cv.block-matching :as bm]
             [stereox.serialization.utils :as su]
             [stereox.serialization.calibration :as sc])
-  (:gen-class)
   (:import (clojure.lang Atom)
            (stereox.cv.block_matching BlockMatcher)
            (stereox.cv.stereo_camera StereoCamera)
-           (stereox.serialization.calibration CalibrationData)))
+           (stereox.cv.stereo_normalizer StereoNormalizer)
+           (stereox.serialization.calibration CalibrationData))
+  (:gen-class))
 
 
 (defrecord LogicState
-  [^CalibrationData calibration
+  [^StereoNormalizer normalizer
+   ^CalibrationData calibration
    ^BlockMatcher block-matcher
    ^StereoCamera camera])
+
+(defn- wrap-captured [images ^CalibrationData data]
+
+  )
 
 (defprotocol ConfigurationLogic
   "Configuration logic interface"
   ;TODO
   (state [_]
-    "Returns internal state (copy)")
+    "Returns:
+      stereox.config.logic.LogicState")
+
+  (render-frame [_]
+    "Grabs frame from stereo camera and
+    calculates disparity map.
+    Returns:
+      org.opencv.core.Mat")
   )
 
 (deftype ConfigLogic [^Atom *state]
@@ -29,6 +43,13 @@
 
   (state [_]
     (map->LogicState @*state))
+
+  (render-frame [_]
+    (let [captured (camera/capture (:camera @*state))
+
+          ]
+
+      ))
   )
 
 (defn- read-calibration-data [& {:keys [config-folder
@@ -43,8 +64,10 @@
    :tag    ConfigLogic}
   [& {:as args}]
   (log/info (pr-str args))
-  (->ConfigLogic
-    (atom (map->LogicState {:block-matcher (bm/create-cpu-stereo-bm)
-                            :calibration   (read-calibration-data args)
-                            :camera        (camera/create args)
-                            }))))
+  (let [c_data (read-calibration-data args)]
+    (->ConfigLogic
+      (atom (map->LogicState {:normalizer    (nrm/create-normalizer c_data)
+                              :block-matcher (bm/create-cpu-stereo-bm)
+                              :camera        (camera/create args)
+                              :calibration   c_data
+                              })))))
