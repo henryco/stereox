@@ -60,6 +60,9 @@
       (Image.)))
 
 (defn- main-cb-loop []
+  ;(println "m-params: " (logic/matcher-params @*logic))
+  ;(println "c-params: " (logic/camera-params @*logic))
+  ;(println "---")
   (let [frame (logic/render-frame @*logic)
         image (matrix-to-image (:disparity frame))]
     (if (some? image)

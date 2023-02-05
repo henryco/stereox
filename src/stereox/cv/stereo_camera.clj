@@ -139,7 +139,7 @@
       (reset! *props properties)))
 
   (params [_]
-    (map identity @*props))
+    (map->CameraProperties @*props))
 
   (capture [_]
     (grab-capture (:capture @*io)))

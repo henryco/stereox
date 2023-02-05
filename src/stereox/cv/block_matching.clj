@@ -64,7 +64,7 @@
     (get @*params key))
 
   (params [_]
-    (map identity @*params))
+    (map->StereoBMProp @*params))
 
   (disparity-map [_ [left right]]
     (let [disparity (Mat.)]
