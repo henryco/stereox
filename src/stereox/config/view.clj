@@ -61,12 +61,9 @@
 
 (defn- main-cb-loop []
   (let [frame (logic/render-frame @*logic)
-        image (matrix-to-image frame)
-        ]
-    ; TODO
+        image (matrix-to-image (:disparity frame))]
     (if (some? image)
-      (swap! *state assoc-in [:camera :image] image))
-    ))
+      (swap! *state assoc-in [:camera :image] image))))
 
 (load "dom")
 (defn start-gui [& {:as args}]

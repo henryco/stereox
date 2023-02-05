@@ -7,7 +7,8 @@
   (:gen-class))
 
 (defn img-copy
-  "Copy image matrix, optionally apply color change."
+  "Copy image matrix, optionally apply color change.
+  e.g. code: Imgproc/COLOR_BGR2GRAY"
   {:tag    Mat
    :static true}
   ([^Mat image ^Integer code]

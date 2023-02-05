@@ -1,17 +1,23 @@
 (ns stereox.config.logic
   (:require [taoensso.timbre :as log]
+            [stereox.utils.commons :as commons]
             [stereox.cv.stereo-normalizer :as nrm]
             [stereox.cv.stereo-camera :as camera]
             [stereox.cv.block-matching :as bm]
             [stereox.serialization.utils :as su]
             [stereox.serialization.calibration :as sc])
-  (:import (clojure.lang Atom)
+  (:import (clojure.lang Atom IPersistentCollection)
+           (org.opencv.core Mat)
+           (org.opencv.imgproc Imgproc)
            (stereox.cv.block_matching BlockMatcher)
            (stereox.cv.stereo_camera StereoCamera)
            (stereox.cv.stereo_normalizer StereoNormalizer)
            (stereox.serialization.calibration CalibrationData))
   (:gen-class))
 
+(defn- to-gray [images]
+  (map #(commons/img-copy % Imgproc/COLOR_BGR2GRAY)
+       images))
 
 (defrecord LogicState
   [^StereoNormalizer normalizer
@@ -19,9 +25,10 @@
    ^BlockMatcher block-matcher
    ^StereoCamera camera])
 
-(defn- wrap-captured [images ^CalibrationData data]
-
-  )
+(defrecord Frame
+  [^IPersistentCollection captured
+   ^IPersistentCollection rectified
+   ^Mat disparity])
 
 (defprotocol ConfigurationLogic
   "Configuration logic interface"
@@ -34,7 +41,7 @@
     "Grabs frame from stereo camera and
     calculates disparity map.
     Returns:
-      org.opencv.core.Mat")
+      Frame")
   )
 
 (deftype ConfigLogic [^Atom *state]
@@ -48,13 +55,11 @@
     (let [captured (camera/capture (:camera @*state))
           rectified (nrm/rectify (:normalizer @*state)
                                  captured)
-
-          ; TODO
-          ]
-      ;(first rectified)
-      ;(log/info "CAPTURED: " (first captured))
-      (first captured)
-      ))
+          disparity (bm/disparity-map (:block-matcher @*state)
+                                      (to-gray rectified))]
+      (->Frame captured
+               rectified
+               disparity)))
   )
 
 (defn- read-calibration-data [& {:keys [config-folder
