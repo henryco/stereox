@@ -2,7 +2,7 @@
 
 (defn render-image [{:keys [camera scale]}]
   {:fx/type    :v-box
-   :style      {:-fx-background-color :black
+   :style      {:-fx-background-color :gray
                 :-fx-alignment        :center}
    :min-width  (-> camera :viewport :width (* scale))
    :min-height (-> camera :viewport :height (* scale))
@@ -18,21 +18,21 @@
 
 (defn matcher-parameters [state]
   {:fx/type    :v-box
-   :style      {:-fx-background-color :blue}
-   :min-height (-> state :panel :min-height)
+   :style      {:-fx-background-color :white}
+   :min-height 10
    })
 
 (defn camera-parameters [state]
   {:fx/type    :v-box
-   :style      {:-fx-background-color :red}
-   :min-height (-> state :panel :min-height)
+   :style      {:-fx-background-color :white}
+   :min-height 10
    })
 
 (defn render-parameters [state]
   {:fx/type   :v-box
-   :style     {:-fx-background-color :gray}
-   :min-width (-> state :panel :min-width)
-   :max-width (-> state :panel :min-width)
+   :style     {:-fx-background-color :white}
+   :min-width (-> state :panel :width)
+   :max-width (-> state :panel :width)
    :children  [(merge state {:fx/type matcher-parameters})
                (merge state {:fx/type camera-parameters})]
    })
@@ -46,11 +46,9 @@
    :on-height-changed on-win-height-change
    :on-width-changed  on-win-width-change
    :scene             {:fx/type :scene
-                       :root    {:fx/type  :h-box
-                                 :style    {:-fx-background-color :black
-                                            :-fx-alignment        :center}
-                                 :children [(merge state {:fx/type render-image})
-                                            (merge state {:fx/type render-parameters})]
-                                 }
-                       }
+                       :root    {:fx/type :border-pane
+                                 :style   {:-fx-background-color :black
+                                           :-fx-alignment        :center}
+                                 :right   (merge state {:fx/type render-parameters})
+                                 :center  (merge state {:fx/type render-image})}}
    })

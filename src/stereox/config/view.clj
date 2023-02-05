@@ -21,8 +21,7 @@
   (atom {:title  "StereoX Pattern Matching configuration"
          :camera {:viewport {:width 1 :height 1 :min-x 0 :min-y 0}
                   :image    nil}
-         :panel  {:min-width  960
-                  :min-height 10}
+         :panel  {:width 300}
          :scale  1.
          :alive  true
          :width  nil
@@ -41,8 +40,7 @@
         oh (-> @*state :camera :viewport :height)
         ww (-> @*state :width)
         hh (-> @*state :height)
-        rw (-> @*state :panel :min-width)]
-    (println "WW: " ww " RW: " rw " OW: " ow)
+        rw (-> @*state :panel :width)]
     (if (and (some? ww) (some? hh))
       (let [[dw dh] (map - [(- ww rw) hh] [(* ow s) (* oh s)])]
         (if (< dw dh)
