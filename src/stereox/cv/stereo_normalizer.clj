@@ -1,9 +1,9 @@
 (ns stereox.cv.stereo-normalizer
+  (:require [stereox.serialization.calibration])
   (:import (clojure.lang PersistentVector)
            (org.opencv.core Mat)
            (org.opencv.imgproc Imgproc)
-           (stereox.serialization.calibration CalibrationData CameraData)
-           )
+           (stereox.serialization.calibration CalibrationData CameraData))
   (:gen-class))
 
 (defrecord ImageWrapper
