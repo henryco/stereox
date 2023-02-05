@@ -43,7 +43,13 @@
 
 (defprotocol ConfigurationLogic
   "Configuration logic interface"
-  ;TODO
+
+  (matcher-params [_]
+    "Returns block matcher parameters as a map")
+
+  (camera-params [_]
+    "Returns stereo camera parameters as a map")
+
   (state [_]
     "Returns:
       stereox.config.logic.LogicState")
@@ -61,7 +67,9 @@
 (deftype ConfigLogic
   [^Atom *state ^Atom *params]
   ConfigurationLogic
-  ; TODO
+
+  (matcher-params [_]
+    (bm/params (:block-matcher @*state)))
 
   (state [_]
     (map->LogicState @*state))
@@ -75,6 +83,10 @@
       (->Frame captured
                rectified
                disparity)))
+
+  (save-settings [_]
+    ; TODO
+    )
   )
 
 (defn- read-calibration-data [& {:keys [config-folder

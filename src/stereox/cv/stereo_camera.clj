@@ -29,6 +29,13 @@
 (defprotocol IStereoCamera
   "Interface for Stereo pair camera"
 
+  (re-init [this ^CameraProperties properties]
+    "Reinitialize stereo camera with properties")
+
+  (params [_]
+    "Returns:
+      stereox.cv.stereo-camera.CameraProperties")
+
   (capture [_]
     "Returns org.opencv.core.Mat[] or nil.
     Asynchronously grab and retrieve data from both cameras.
@@ -120,10 +127,23 @@
       nil)                                                  ; GRABBED:  FALSE -> NIL
     ))
 
-(defrecord StereoCamera [^Atom *io]
+(defrecord StereoCamera [^Atom *io ^Atom *props]
   IStereoCamera
+
+  (re-init [this properties]
+    (dosync
+      (release this)
+      (reset! *io (cw/postwalk
+                    #(if (record? %) (into {} %) %)
+                    (init-camera properties)))
+      (reset! *props properties)))
+
+  (params [_]
+    (map identity @*props))
+
   (capture [_]
     (grab-capture (:capture @*io)))
+
   (release [_]
     (run! #(.release %) (:capture @*io))))
 
@@ -132,10 +152,10 @@
   {:static true
    :tag    StereoCamera}
   [^CameraProperties properties]
-  ; basically just (StereoCamera. (atom (into {} io))
-  (StereoCamera.
+  ; basically just (StereoCamera. (atom (into {} io)), but deep copy
+  (->StereoCamera
     (atom
       (cw/postwalk
         #(if (record? %) (into {} %) %)
-        (init-camera properties)
-        ))))
+        (init-camera properties)))
+    (atom properties)))
