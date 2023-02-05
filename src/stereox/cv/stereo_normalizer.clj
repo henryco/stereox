@@ -61,17 +61,16 @@
   StereoNormalizer
 
   (rectify [_ images]
-    (map (fn [^Mat image]
+    (map (fn [^ImageWrapper image]
            (rectify_image
              (find-camera-data image calibration_data)
              (:image image)))
-         ;a[]: [ {:id 1} {:id 2} ...]
+         ;a[]: [ "1" "2" ...]
          ;b[]: [ img1 img2 ...]
-         ;o[]: [ {:id 1 :image img1} ...]
+         ;o[]: [ {:id "1" :image img1} ...]
          (map (fn [a b]
-                (assoc a :image b))
-              order images)))
-  )
+                (->ImageWrapper a b))
+              order images))))
 
 (defn create-normalizer
   "Create new instance of StereoNormalizer"
@@ -83,6 +82,4 @@
 
   ([^CalibrationData calibration_data
     ^PersistentVector ids]
-   (->OrderedStereoNormalizer calibration_data
-                              (map (fn [v] {:id v})
-                                   ids))))
+   (->OrderedStereoNormalizer calibration_data ids)))

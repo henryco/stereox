@@ -46,9 +46,12 @@
 
   (render-frame [_]
     (let [captured (camera/capture (:camera @*state))
+          rectified (nrm/rectify (:normalizer @*state)
+                                 captured)
 
+          ; TODO
           ]
-
+      (first rectified)
       ))
   )
 
@@ -66,8 +69,9 @@
   (log/info (pr-str args))
   (let [c_data (read-calibration-data args)]
     (->ConfigLogic
-      (atom (map->LogicState {:normalizer    (nrm/create-normalizer c_data)
-                              :block-matcher (bm/create-cpu-stereo-bm)
-                              :camera        (camera/create args)
-                              :calibration   c_data
-                              })))))
+      (atom
+        (map->LogicState {:normalizer    (nrm/create-normalizer c_data (:ids args))
+                          :block-matcher (bm/create-cpu-stereo-bm)
+                          :camera        (camera/create args)
+                          :calibration   c_data
+                          })))))
