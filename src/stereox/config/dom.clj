@@ -2,7 +2,7 @@
 
 (defn render-image [{:keys [camera scale]}]
   {:fx/type    :v-box
-   :style      {:-fx-background-color :gray
+   :style      {:-fx-background-color :darkgray
                 :-fx-alignment        :center}
    :min-width  (-> camera :viewport :width (* scale))
    :min-height (-> camera :viewport :height (* scale))
