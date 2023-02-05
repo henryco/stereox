@@ -16,6 +16,20 @@
                  [])
    })
 
+(defn matcher-parameters [state]
+  {:fx/type    :v-box
+   :style      {:-fx-background-color :white}
+   :min-width  (-> state :panel :min-width)
+   :min-height (-> state :panel :min-height)
+   })
+
+(defn camera-parameters [state]
+  {:fx/type    :v-box
+   :style      {:-fx-background-color :white}
+   :min-width  (-> state :panel :min-width)
+   :min-height (-> state :panel :min-height)
+   })
+
 (defn root [state]
   {:fx/type           :stage
    :resizable         true
@@ -29,8 +43,8 @@
                                  :style    {:-fx-background-color :black
                                             :-fx-alignment        :center}
                                  :children [(merge state {:fx/type render-image})
-                                            ; TODO: CONTROLS
-                                            ]
+                                            (merge state {:fx/type matcher-parameters})
+                                            (merge state {:fx/type camera-parameters})]
                                  }
                        }
    })

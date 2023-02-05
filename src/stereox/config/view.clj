@@ -21,6 +21,8 @@
   (atom {:title  "StereoX Pattern Matching configuration"
          :camera {:viewport {:width 1 :height 1 :min-x 0 :min-y 0}
                   :image    nil}
+         :panel  {:min-width  150
+                  :min-height 300}
          :scale  1.
          :alive  true
          :width  nil
