@@ -17,12 +17,14 @@
    })
 
 (defn matcher-parameters [state]
+  ; TODO
   {:fx/type    :v-box
    :style      {:-fx-background-color :white}
    :min-height 10
    })
 
 (defn camera-parameters [state]
+  ; TODO
   {:fx/type    :v-box
    :style      {:-fx-background-color :white}
    :min-height 10

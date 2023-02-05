@@ -85,4 +85,9 @@
      (setup matcher)
      matcher))
   ([] (create-cpu-stereo-bm
-        (->StereoBMProp 16 21 false -1))))
+        (map->StereoBMProp
+          {:search-range (* 16 5)
+           :window-size  11
+           :missing      false
+           :ddepth       -1
+           }))))
