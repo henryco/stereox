@@ -1,8 +1,8 @@
 (ns stereox.config.view
   (:require [stereox.utils.guifx :as gfx]
             [stereox.config.logic :as logic]
-            )
-  (:gen-class))
+            [taoensso.timbre :as log])
+  (:gen-class :main true))
 
 (def ^:private *logic
   "Logic"
@@ -14,16 +14,17 @@
 
 (def ^:private *state
   "JavaFX UI state"
-  (atom {:title "StereoX Pattern Matching configuration"
+  (atom {:title  "StereoX Pattern Matching configuration"
          :camera {:viewport {:width 1 :height 1 :min-x 0 :min-y 0}}
          :scale  1.
          :alive  true
-         :width  1280
-         :height 720
+         :width  nil
+         :height nil
          }))
 
 (defn- shutdown [& {:keys [code]}]
   (try
+    (log/info "STOOP")
     (gfx/shutdown @*gui)
     (catch Exception e (.printStackTrace e))
     (finally (System/exit (if (some? code) code 0)))))
@@ -51,28 +52,12 @@
   (swap! *state assoc :width v)
   (on-win-change))
 
-(defn- root [state]
-  {:fx/type           :stage
-   :resizable         true
-   :showing           (:alive state)
-   :title             (:title state)
-   :on-close-request  shutdown
-   :on-height-changed on-win-height-change
-   :on-width-changed  on-win-width-change
-   :scene             {:fx/type :scene
-                       :root    {:fx/type  :v-box
-                                 :style    {:-fx-background-color :black
-                                            :-fx-alignment        :center}
-                                 ;:children [(merge state {:fx/type render-images})]
-                                 ; TODO
-                                 }
-                       }
-   })
-
 (defn- main-cb-loop []
-  ; TODO
-  )
+  (let [frame (logic/render-frame @*logic)]
+    ; TODO
+    ))
 
+(load "dom")
 (defn start-gui [& {:as args}]
   (reset! *logic (logic/configure args))
   (reset! *gui (gfx/create-guifx *state root main-cb-loop)))
