@@ -51,7 +51,9 @@
 
           ; TODO
           ]
-      (first rectified)
+      ;(first rectified)
+      ;(log/info "CAPTURED: " (first captured))
+      (first captured)
       ))
   )
 

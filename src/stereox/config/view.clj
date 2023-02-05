@@ -1,8 +1,12 @@
 (ns stereox.config.view
-  (:require [stereox.utils.guifx :as gfx]
-            [stereox.config.logic :as logic]
-            [taoensso.timbre :as log])
-  (:gen-class :main true))
+  (:require
+    [stereox.config.logic :as logic]
+    [stereox.utils.commons :as commons]
+    [stereox.utils.guifx :as gfx])
+  (:gen-class :main true)
+  (:import (java.io ByteArrayInputStream)
+           (javafx.scene.image Image)
+           (org.opencv.core Mat)))
 
 (def ^:private *logic
   "Logic"
@@ -15,7 +19,8 @@
 (def ^:private *state
   "JavaFX UI state"
   (atom {:title  "StereoX Pattern Matching configuration"
-         :camera {:viewport {:width 1 :height 1 :min-x 0 :min-y 0}}
+         :camera {:viewport {:width 1 :height 1 :min-x 0 :min-y 0}
+                  :image    nil}
          :scale  1.
          :alive  true
          :width  nil
@@ -24,7 +29,6 @@
 
 (defn- shutdown [& {:keys [code]}]
   (try
-    (log/info "STOOP")
     (gfx/shutdown @*gui)
     (catch Exception e (.printStackTrace e))
     (finally (System/exit (if (some? code) code 0)))))
@@ -36,12 +40,10 @@
         ww (-> @*state :width)
         hh (-> @*state :height)]
     (if (and (some? ww) (some? hh))
-      (let [[dw dh] (map - [ww hh] [(* ow s 2) (* oh s)])]
+      (let [[dw dh] (map - [ww hh] [(* ow s) (* oh s)])]
         (if (< dw dh)
-          (swap! *state assoc :scale (/ ww ow 2))
-          (swap! *state assoc :scale (/ hh oh)))
-        )
-      )
+          (swap! *state assoc :scale (/ ww ow))
+          (swap! *state assoc :scale (/ hh oh)))))
     ))
 
 (defn- on-win-height-change [v]
@@ -52,12 +54,25 @@
   (swap! *state assoc :width v)
   (on-win-change))
 
+(defn matrix-to-image [^Mat matrix]
+  (-> (commons/image-mat-to-bytes matrix)
+      (ByteArrayInputStream.)
+      (Image.)))
+
 (defn- main-cb-loop []
-  (let [frame (logic/render-frame @*logic)]
+  (let [frame (logic/render-frame @*logic)
+        image (matrix-to-image frame)
+        ]
     ; TODO
+    (if (some? image)
+      (swap! *state assoc-in [:camera :image] image))
     ))
 
 (load "dom")
 (defn start-gui [& {:as args}]
+  (swap! *state assoc-in [:camera :viewport] {:width  (:width args)
+                                              :height (:height args)
+                                              :min-x  0
+                                              :min-y  0})
   (reset! *logic (logic/configure args))
   (reset! *gui (gfx/create-guifx *state root main-cb-loop)))

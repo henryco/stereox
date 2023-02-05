@@ -69,7 +69,7 @@
          :width  nil
          :height nil
          :camera {:viewport {:width 0 :height 0 :min-x 0 :min-y 0}
-                  :image    ^Image []}
+                  :image    []}
          }))
 
 (defn image-adapt [matrices]
