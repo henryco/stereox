@@ -68,6 +68,9 @@
   [^Atom *state ^Atom *params]
   ConfigurationLogic
 
+  (camera-params [_]
+    (camera/params (:camera @*state)))
+
   (matcher-params [_]
     (bm/params (:block-matcher @*state)))
 
