@@ -7,6 +7,7 @@
             [stereox.serialization.utils :as su]
             [stereox.serialization.calibration :as sc])
   (:import (clojure.lang Atom IPersistentCollection)
+           (java.io File)
            (org.opencv.core Mat)
            (org.opencv.imgproc Imgproc)
            (stereox.cv.block_matching BlockMatcher)
@@ -18,6 +19,16 @@
 (defn- to-gray [images]
   (map #(commons/img-copy % Imgproc/COLOR_BGR2GRAY)
        images))
+
+(defrecord ConfigParameters
+  [^IPersistentCollection ids
+   ^IPersistentCollection codec
+   ^File output-folder
+   ^File config-folder
+   ^Integer width
+   ^Integer height
+   ^Integer buffer
+   ^Integer fps])
 
 (defrecord LogicState
   [^StereoNormalizer normalizer
@@ -42,9 +53,13 @@
     calculates disparity map.
     Returns:
       Frame")
+
+  (save-settings [_]
+    "Save camera and block matcher settings")
   )
 
-(deftype ConfigLogic [^Atom *state]
+(deftype ConfigLogic
+  [^Atom *state ^Atom *params]
   ConfigurationLogic
   ; TODO
 
@@ -74,11 +89,13 @@
    :tag    ConfigLogic}
   [& {:as args}]
   (log/info (pr-str args))
-  (let [c_data (read-calibration-data args)]
+  (let [c_data (read-calibration-data args)
+        params (map->ConfigParameters args)]
     (->ConfigLogic
       (atom
-        (map->LogicState {:normalizer    (nrm/create-normalizer c_data (:ids args))
+        (map->LogicState {:normalizer    (nrm/create-normalizer c_data (:ids params))
                           :block-matcher (bm/create-cpu-stereo-bm)
-                          :camera        (camera/create args)
+                          :camera        (camera/create params)
                           :calibration   c_data
-                          })))))
+                          }))
+      (atom params))))
