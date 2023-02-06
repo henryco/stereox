@@ -13,6 +13,9 @@
 (defprotocol BlockMatcher
   "Block matcher algorithm interface"
 
+  (options []
+    "Returns tweakable options vector")
+
   (setup [_] [_ map] [_ k v]
     "Update algorithm parameter (key value)")
 
@@ -44,8 +47,12 @@
   BlockMatcher
 
   (setup [_]
-    (reset! *matcher (StereoBM/create (int (:search-range @*params))
+    (reset! *matcher (StereoBM/create (* 16 (int (:search-range @*params)))
                                       (int (:window-size @*params)))))
+
+  (options [_]
+    ["search-range"
+     "window-size"])
 
   (setup [this m]
     (dosync
@@ -61,7 +68,9 @@
       (setup this)))
 
   (param [_ key]
-    (get @*params key))
+    (if (keyword? key)
+      (get @*params key)
+      (get @*params (keyword key))))
 
   (params [_]
     (map->StereoBMProp @*params))
@@ -86,7 +95,7 @@
      matcher))
   ([] (create-cpu-stereo-bm
         (map->StereoBMProp
-          {:search-range (* 16 5)
+          {:search-range 5
            :window-size  11
            :missing      false
            :ddepth       -1
