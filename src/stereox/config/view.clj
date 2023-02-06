@@ -2,8 +2,7 @@
   (:require
     [stereox.config.logic :as logic]
     [stereox.utils.commons :as commons]
-    [stereox.utils.guifx :as gfx]
-    [taoensso.timbre :as log])
+    [stereox.utils.guifx :as gfx])
   (:gen-class :main true)
   (:import (java.io ByteArrayInputStream)
            (javafx.scene.image Image)
