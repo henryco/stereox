@@ -45,7 +45,7 @@
   "Configuration logic interface"
 
   (matcher-options [_]
-    "Returns block matcher options (vector)")
+    "Returns block matcher options (map {:key :max-val})")
 
   (matcher-params [_]
     "Returns block matcher parameters as a map")

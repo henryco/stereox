@@ -2,7 +2,8 @@
   (:require
     [stereox.config.logic :as logic]
     [stereox.utils.commons :as commons]
-    [stereox.utils.guifx :as gfx])
+    [stereox.utils.guifx :as gfx]
+    [taoensso.timbre :as log])
   (:gen-class :main true)
   (:import (java.io ByteArrayInputStream)
            (javafx.scene.image Image)
@@ -18,14 +19,16 @@
 
 (def ^:private *state
   "JavaFX UI state"
-  (atom {:title  "StereoX Pattern Matching configuration"
-         :camera {:viewport {:width 1 :height 1 :min-x 0 :min-y 0}
-                  :image    nil}
-         :panel  {:width 300}
-         :scale  1.
-         :alive  true
-         :width  nil
-         :height nil
+  (atom {:title    "StereoX Pattern Matching configuration"
+         :controls {:matcher [{:id "" :max 0 :val 0}]
+                    :camera  [{:id "" :max 0 :val 0}]}
+         :camera   {:viewport {:width 1 :height 1 :min-x 0 :min-y 0}
+                    :image    nil}
+         :panel    {:width 300}
+         :scale    1.
+         :alive    true
+         :width    nil
+         :height   nil
          }))
 
 (defn- shutdown [& {:keys [code]}]
@@ -69,11 +72,27 @@
     (if (some? image)
       (swap! *state assoc-in [:camera :image] image))))
 
-(load "dom")
-(defn start-gui [& {:as args}]
+(defn- initialize-logic [{:as args}]
+  (reset! *logic (logic/configure args)))
+
+(defn- initialize-state [{:as args}]
+  (swap! *state assoc-in [:controls :matcher]
+         (vec (doall (map (fn [[k v]]
+                            {:val (get (logic/matcher-params @*logic)
+                                       (keyword k))
+                             :max v :id k})
+                          (logic/matcher-options @*logic)))))
   (swap! *state assoc-in [:camera :viewport] {:width  (:width args)
                                               :height (:height args)
                                               :min-x  0
-                                              :min-y  0})
-  (reset! *logic (logic/configure args))
+                                              :min-y  0}))
+
+(load "dom")
+
+(defn- initialize-gui []
   (reset! *gui (gfx/create-guifx *state root main-cb-loop)))
+
+(defn start-gui [& {:as args}]
+  (initialize-logic args)
+  (initialize-state args)
+  (initialize-gui))

@@ -9,8 +9,8 @@
    :children   (if (some? (:image camera))
                  [{:fx/type        :image-view
                    :preserve-ratio true
-                   :viewport       (:viewport camera)
                    :fit-height     (-> camera :viewport :height (* scale))
+                   :viewport       (:viewport camera)
                    :image          (:image camera)
                    }]
                  [])
@@ -45,7 +45,7 @@
    :spacing    20
    :children   [{:fx/type slider
                  :min     0
-                 :max     50
+                 :max     300
                  :value   33
                  }
                 {:fx/type slider

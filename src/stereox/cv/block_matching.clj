@@ -14,7 +14,7 @@
   "Block matcher algorithm interface"
 
   (options [_]
-    "Returns tweakable options vector")
+    "Returns tweakable options map {:key :max-val}")
 
   (setup [_] [_ map] [_ k v]
     "Update algorithm parameter (key value)")
@@ -51,8 +51,8 @@
                                       (int (:window-size @*params)))))
 
   (options [_]
-    ["search-range"
-     "window-size"])
+    {"search-range" 100
+     "window-size"  100})
 
   (setup [this m]
     (dosync
