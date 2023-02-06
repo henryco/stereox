@@ -13,7 +13,7 @@
 (defprotocol BlockMatcher
   "Block matcher algorithm interface"
 
-  (options []
+  (options [_]
     "Returns tweakable options vector")
 
   (setup [_] [_ map] [_ k v]
