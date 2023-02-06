@@ -61,11 +61,11 @@
       (Image.)))
 
 (defn- main-cb-loop []
-  ;(println "m-params: " (logic/matcher-params @*logic))
-  ;(println "c-params: " (logic/camera-params @*logic))
-  ;(println "---")
   (let [frame (logic/render-frame @*logic)
-        image (matrix-to-image (:disparity frame))]
+        image (matrix-to-image (:disparity frame))
+        ;image (matrix-to-image (first (:captured frame)))
+        ;image (matrix-to-image (first (:rectified frame)))
+        ]
     (if (some? image)
       (swap! *state assoc-in [:camera :image] image))))
 

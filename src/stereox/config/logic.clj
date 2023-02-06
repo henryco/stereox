@@ -44,6 +44,9 @@
 (defprotocol ConfigurationLogic
   "Configuration logic interface"
 
+  (matcher-options [_]
+    "Returns block matcher options (vector)")
+
   (matcher-params [_]
     "Returns block matcher parameters as a map")
 
@@ -67,6 +70,9 @@
 (deftype ConfigLogic
   [^Atom *state ^Atom *params]
   ConfigurationLogic
+
+  (matcher-options [_]
+    (bm/options (:block-matcher @*state)))
 
   (camera-params [_]
     (camera/params (:camera @*state)))
