@@ -58,7 +58,7 @@
   (swap! *state assoc :width v)
   (on-win-change))
 
-(defn matrix-to-image [^Mat matrix]
+(defn- matrix-to-image [^Mat matrix]
   (-> (commons/image-mat-to-bytes matrix)
       (ByteArrayInputStream.)
       (Image.)))
