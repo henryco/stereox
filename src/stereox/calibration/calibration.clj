@@ -341,10 +341,11 @@
                                    translation_mtx
                                    essential_mtx
                                    fundamental_mtx
-                                   (+ Calib3d/CALIB_FIX_ASPECT_RATIO
-                                      Calib3d/CALIB_ZERO_TANGENT_DIST
-                                      Calib3d/CALIB_SAME_FOCAL_LENGTH
-                                      Calib3d/CALIB_FIX_INTRINSIC)
+                                   (+ Calib3d/CALIB_FIX_INTRINSIC
+                                      ;Calib3d/CALIB_FIX_ASPECT_RATIO
+                                      ;Calib3d/CALIB_ZERO_TANGENT_DIST
+                                      ;Calib3d/CALIB_SAME_FOCAL_LENGTH
+                                      )
                                    (TermCriteria. (+ TermCriteria/MAX_ITER
                                                      TermCriteria/EPS)
                                                   100
