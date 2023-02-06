@@ -8,7 +8,7 @@
             [taoensso.timbre :as log])
   (:import (clojure.lang PersistentVector)
            (java.io ByteArrayInputStream File)
-           (java.util ArrayList)
+           (java.util ArrayList List)
            (javafx.animation AnimationTimer)
            (javafx.application Platform)
            (javafx.scene.image Image)
@@ -239,14 +239,13 @@
                                     (TermCriteria. (+ TermCriteria/MAX_ITER
                                                       TermCriteria/COUNT)
                                                    30
-                                                   0.1))
+                                                   0.001))
               (.add img_p corners)
               (.add obj_p obp))
             ) data)
     (OneOfPairData. id obj_p
                     img_p
-                    (-> data (first) (:image) (.size))))
-  )
+                    (-> data (first) (:image) (.size)))))
 
 (defn save-calibrated
   "Save calibrated data"
@@ -265,11 +264,57 @@
     (su/prep-dirs output_dir)
     (serial/calibration-to-file data output_file)))
 
-(defn calibrate-pair
-  "Calibrates stereo camera and writes result somewhere"
+(defrecord Calib8Data
+  [^String id
+   ^ArrayList object_points
+   ^ArrayList image_points
+   ^Size image_size
+   ^Double rmse
+   ^Mat camera_matrix
+   ^Mat distortion_coeffs
+   ^List rvecs
+   ^List tvecs])
+
+(defn calibr8-each
+  "Calibrates separately each camera in stereo pair.
+  Returns:
+    Calib8Data[]"
+  {:static true}
   [^OneOfPairData left
    ^OneOfPairData right]
-  (log/info "calibrating stereo pair, it may take a while...")
+  (log/info "calibrate each...")
+  (map (fn [p] (deref p))
+       (map
+         (fn [^OneOfPairData data]
+           (future
+             (let [c_mat (Mat.)
+                   d_cef (Mat.)
+                   rvecs (ArrayList.)
+                   tvecs (ArrayList.)
+                   rmse (Calib3d/calibrateCamera (:object_points data)
+                                                 (:image_points data)
+                                                 (:image_size data)
+                                                 c_mat
+                                                 d_cef
+                                                 rvecs
+                                                 tvecs)]
+               (log/info "Camera [" (:id data) "] RMSE: " rmse)
+               (map->Calib8Data
+                 (merge data {:rmse              rmse
+                              :camera_matrix     c_mat
+                              :distortion_coeffs d_cef
+                              :rvecs             rvecs
+                              :tvecs             tvecs})))))
+         [left right])))
+
+(defn calibr8-stereo
+  "Calibrates stereo pair using data from previous solo calibration
+  Expects:
+    Calib8Data[]"
+  {:static true}
+  [[^Calib8Data left
+    ^Calib8Data right]]
+  (log/info "calibrate stereo...")
   (let [img_size (:image_size left)
         cam_mtx1 (Mat.)
         cam_mtx2 (Mat.)
@@ -279,106 +324,121 @@
         translation_mtx (Mat.)
         essential_mtx (Mat.)
         fundamental_mtx (Mat.)]
-    (Calib3d/stereoCalibrate (:object_points left)
-                             (:image_points left)
-                             (:image_points right)
-                             cam_mtx1
-                             dist_cf1
-                             cam_mtx2
-                             dist_cf2
-                             img_size
-                             rotation_mtx
-                             translation_mtx
-                             essential_mtx
-                             fundamental_mtx
-                             (+ Calib3d/CALIB_FIX_ASPECT_RATIO
-                                Calib3d/CALIB_ZERO_TANGENT_DIST
-                                Calib3d/CALIB_SAME_FOCAL_LENGTH)
-                             (TermCriteria. (+ TermCriteria/MAX_ITER
-                                               TermCriteria/EPS)
-                                            100
-                                            0.000001)
-                             )
-    (let [rect_transform1 (Mat.)
-          rect_transform2 (Mat.)
-          proj_mtx1 (Mat.)
-          proj_mtx2 (Mat.)
-          roi_mtx1 (Rect.)
-          roi_mtx2 (Rect.)
-          undistortion_map1 (Mat.)
-          undistortion_map2 (Mat.)
-          rectification_map1 (Mat.)
-          rectification_map2 (Mat.)
-          disp_to_depth_mtx (Mat.)
+    (.copyTo (:camera_matrix left) cam_mtx1)
+    (.copyTo (:camera_matrix right) cam_mtx2)
+    (.copyTo (:distortion_coeffs left) dist_cf1)
+    (.copyTo (:distortion_coeffs right) dist_cf2)
+    (let [re-projection_error
+          (Calib3d/stereoCalibrate (:object_points left)
+                                   (:image_points left)
+                                   (:image_points right)
+                                   cam_mtx1
+                                   dist_cf1
+                                   cam_mtx2
+                                   dist_cf2
+                                   img_size
+                                   rotation_mtx
+                                   translation_mtx
+                                   essential_mtx
+                                   fundamental_mtx
+                                   (+ Calib3d/CALIB_FIX_ASPECT_RATIO
+                                      Calib3d/CALIB_ZERO_TANGENT_DIST
+                                      Calib3d/CALIB_SAME_FOCAL_LENGTH
+                                      Calib3d/CALIB_FIX_INTRINSIC)
+                                   (TermCriteria. (+ TermCriteria/MAX_ITER
+                                                     TermCriteria/EPS)
+                                                  100
+                                                  0.00001))]
+      (log/info "Stereo re-projection error: " re-projection_error)
 
-          fixed_dsp_dpt_mtx (let [m (Mat.)]
-                              (.push_back m (MatOfFloat4. (float-array [1 0 0 (* -0.5 (.width img_size))])))
-                              (.push_back m (MatOfFloat4. (float-array [0 -1 0 (* 0.5 (.height img_size))])))
-                              (.push_back m (MatOfFloat4. (float-array [0 0 0 (* -0.8 (.width img_size))])))
-                              (.push_back m (MatOfFloat4. (float-array [0 0 1 0])))
-                              m)
+      (let [rect_transform1 (Mat.)
+            rect_transform2 (Mat.)
+            proj_mtx1 (Mat.)
+            proj_mtx2 (Mat.)
+            roi_mtx1 (Rect.)
+            roi_mtx2 (Rect.)
+            undistortion_map1 (Mat.)
+            undistortion_map2 (Mat.)
+            rectification_map1 (Mat.)
+            rectification_map2 (Mat.)
+            disp_to_depth_mtx (Mat.)
 
-          pair [{:id                (:id left)
-                 :cam_mtx           cam_mtx1
-                 :dist_cf           dist_cf1
-                 :rect_tr           rect_transform1
-                 :prj_mtx           proj_mtx1
-                 :roi_mtx           roi_mtx1
-                 :undistortion_map  undistortion_map1
-                 :rectification_map rectification_map1}
-                {:id                (:id right)
-                 :cam_mtx           cam_mtx2
-                 :dist_cf           dist_cf2
-                 :rect_tr           rect_transform2
-                 :prj_mtx           proj_mtx2
-                 :roi_mtx           roi_mtx2
-                 :undistortion_map  undistortion_map2
-                 :rectification_map rectification_map2}]
-          ]
-      (Calib3d/stereoRectify cam_mtx1
-                             dist_cf1
-                             cam_mtx2
-                             dist_cf2
-                             img_size
-                             rotation_mtx
-                             translation_mtx
-                             rect_transform1
-                             rect_transform2
-                             proj_mtx1
-                             proj_mtx2
-                             disp_to_depth_mtx
-                             0
-                             0
-                             img_size
-                             roi_mtx1
-                             roi_mtx2)
-      (run! #(Calib3d/initUndistortRectifyMap (:cam_mtx %)
-                                              (:dist_cf %)
-                                              (:rect_tr %)
-                                              (:prj_mtx %)
-                                              img_size
-                                              CvType/CV_32FC1
-                                              (:undistortion_map %)
-                                              (:rectification_map %))
-            pair)
-      (save-calibrated
-        (CalibrationData. img_size
-                          rotation_mtx
-                          translation_mtx
-                          essential_mtx
-                          fundamental_mtx
-                          disp_to_depth_mtx
-                          fixed_dsp_dpt_mtx
-                          (map #(CameraData. (:id %)
-                                             (:cam_mtx %)
-                                             (:dist_cf %)
-                                             (:rect_tr %)
-                                             (:prj_mtx %)
-                                             (:roi_mtx %)
-                                             (:undistortion_map %)
-                                             (:rectification_map %))
-                               pair)))
-      )))
+            fixed_dsp_dpt_mtx (let [m (Mat.)]
+                                (.push_back m (MatOfFloat4. (float-array [1 0 0 (* -0.5 (.width img_size))])))
+                                (.push_back m (MatOfFloat4. (float-array [0 -1 0 (* 0.5 (.height img_size))])))
+                                (.push_back m (MatOfFloat4. (float-array [0 0 0 (* -0.8 (.width img_size))])))
+                                (.push_back m (MatOfFloat4. (float-array [0 0 1 0])))
+                                m)
+
+            pair [{:id                (:id left)
+                   :cam_mtx           cam_mtx1
+                   :dist_cf           dist_cf1
+                   :rect_tr           rect_transform1
+                   :prj_mtx           proj_mtx1
+                   :roi_mtx           roi_mtx1
+                   :undistortion_map  undistortion_map1
+                   :rectification_map rectification_map1}
+                  {:id                (:id right)
+                   :cam_mtx           cam_mtx2
+                   :dist_cf           dist_cf2
+                   :rect_tr           rect_transform2
+                   :prj_mtx           proj_mtx2
+                   :roi_mtx           roi_mtx2
+                   :undistortion_map  undistortion_map2
+                   :rectification_map rectification_map2}]
+            ]
+        (Calib3d/stereoRectify cam_mtx1
+                               dist_cf1
+                               cam_mtx2
+                               dist_cf2
+                               img_size
+                               rotation_mtx
+                               translation_mtx
+                               rect_transform1
+                               rect_transform2
+                               proj_mtx1
+                               proj_mtx2
+                               disp_to_depth_mtx
+                               0
+                               0
+                               img_size
+                               roi_mtx1
+                               roi_mtx2)
+        (run! #(Calib3d/initUndistortRectifyMap (:cam_mtx %)
+                                                (:dist_cf %)
+                                                (:rect_tr %)
+                                                (:prj_mtx %)
+                                                img_size
+                                                CvType/CV_32FC1
+                                                (:undistortion_map %)
+                                                (:rectification_map %))
+              pair)
+        (save-calibrated
+          (CalibrationData. img_size
+                            rotation_mtx
+                            translation_mtx
+                            essential_mtx
+                            fundamental_mtx
+                            disp_to_depth_mtx
+                            fixed_dsp_dpt_mtx
+                            (map #(CameraData. (:id %)
+                                               (:cam_mtx %)
+                                               (:dist_cf %)
+                                               (:rect_tr %)
+                                               (:prj_mtx %)
+                                               (:roi_mtx %)
+                                               (:undistortion_map %)
+                                               (:rectification_map %))
+                                 pair)))
+        ))))
+
+(defn calibrate-pair
+  [^OneOfPairData left
+   ^OneOfPairData right]
+  (log/info "calibrate pair...")
+  (calibr8-stereo
+    (calibr8-each left
+                  right)))
 
 (defn stereo-calibration
   "Camera stereo calibration.
