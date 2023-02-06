@@ -10,6 +10,14 @@
   [v default]
   (if (nil? v) default v))
 
+(defn- to-odd
+  "Returns 'v' if odd, otherwise 'v+1'"
+  [v]
+  (if (= (mod v 2)
+         0)
+    (+ 1 v)
+    v))
+
 (defprotocol BlockMatcher
   "Block matcher algorithm interface"
 
@@ -48,7 +56,7 @@
 
   (setup [_]
     (reset! *matcher (StereoBM/create (* 16 (int (:search-range @*params)))
-                                      (int (:window-size @*params)))))
+                                      (max 5 (to-odd (int (:window-size @*params)))))))
 
   (options [_]
     {"search-range" 100
@@ -63,9 +71,10 @@
       (setup this)))
 
   (setup [this k v]
-    (dosync
-      (swap! *params assoc k v)
-      (setup this)))
+    (let [kk (if (keyword? k) k (keyword k))]
+      (dosync
+        (swap! *params assoc kk v)
+        (setup this))))
 
   (param [_ key]
     (if (keyword? key)

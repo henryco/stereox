@@ -16,47 +16,45 @@
                  [])
    })
 
-(defn slider [{:keys [min max value]}]
+(defn slider [{:keys [id min max value update-fn]}]
   {:fx/type  :v-box
    :spacing  5
    :children [{:fx/type :label
-               :text    "TODO"}
+               :text    id}
               {:fx/type  :h-box
                :spacing  10
                :children [{:fx/type          :slider
                            :min-width        240
                            :block-increment  1
-                           :major-tick-unit  10
+                           :major-tick-unit  1
+                           :minor-tick-count 1
                            :show-tick-labels true
                            :snap-to-ticks    true
                            :min              min
                            :max              max
                            :value            value
+                           :on-value-changed update-fn
                            }
                           {:fx/type :label
-                           :text    "TODO"}]
+                           :text    (str value)}]
                }]})
 
-(defn matcher-parameters [state]
-  ; TODO
+(defn matcher-parameters [{:keys [matcher]}]
   {:fx/type    :v-box
    :style      {:-fx-background-color :white}
    :min-height 10
    :spacing    20
-   :children   [{:fx/type slider
-                 :min     0
-                 :max     300
-                 :value   33
-                 }
-                {:fx/type slider
-                 :min     0
-                 :max     50
-                 :value   33
-                 }
-                ]
+   :children   (map (fn [{:keys [id max val]}]
+                      {:fx/type   slider
+                       :value     val
+                       :id        id
+                       :max       max
+                       :min       0
+                       :update-fn #(on-matcher-update id (int %))})
+                    matcher)
    })
 
-(defn camera-parameters [state]
+(defn camera-parameters [{:keys [camera]}]
   ; TODO
   {:fx/type    :v-box
    :style      {:-fx-background-color :white}
@@ -69,8 +67,10 @@
    :style     {:-fx-background-color :white}
    :min-width (-> state :panel :width)
    :max-width (-> state :panel :width)
-   :children  [(merge state {:fx/type matcher-parameters})
-               (merge state {:fx/type camera-parameters})]
+   :children  [{:fx/type matcher-parameters
+                :matcher (-> state :controls :matcher)}
+               {:fx/type camera-parameters
+                :camera  (-> state :controls :camera)}]
    })
 
 (defn root [state]

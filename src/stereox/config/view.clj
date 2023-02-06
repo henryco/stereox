@@ -71,20 +71,38 @@
     (if (some? image)
       (swap! *state assoc-in [:camera :image] image))))
 
+(defn- update-matcher-params [k v]
+  (.setup (:block-matcher (logic/state @*logic)) k v))
+
+(defn- on-matcher-update [k v]
+  (swap! *state assoc-in [:controls :matcher]
+         (-> (map (fn [{:keys [id max] :as args}]
+                    (if (.equalsIgnoreCase id k)
+                      (do (if (not= v val)
+                            (update-matcher-params k v))
+                          {:id id :max max :val v})
+                      args))
+                  (-> @*state :controls :matcher))
+             (doall)
+             (vec))))
+
 (defn- initialize-logic [{:as args}]
   (reset! *logic (logic/configure args)))
 
 (defn- initialize-state [{:as args}]
   (swap! *state assoc-in [:controls :matcher]
-         (vec (doall (map (fn [[k v]]
-                            {:val (get (logic/matcher-params @*logic)
-                                       (keyword k))
-                             :max v :id k})
-                          (logic/matcher-options @*logic)))))
-  (swap! *state assoc-in [:camera :viewport] {:width  (:width args)
-                                              :height (:height args)
-                                              :min-x  0
-                                              :min-y  0}))
+         (-> (map (fn [[k v]]
+                    {:val (get (logic/matcher-params @*logic)
+                               (keyword k))
+                     :max v :id k})
+                  (logic/matcher-options @*logic))
+             (doall)
+             (vec)))
+  (swap! *state assoc-in [:camera :viewport]
+         {:width  (:width args)
+          :height (:height args)
+          :min-x  0
+          :min-y  0}))
 
 (load "dom")
 
