@@ -16,11 +16,44 @@
                  [])
    })
 
+(defn slider [{:keys [min max value]}]
+  {:fx/type  :v-box
+   :spacing  5
+   :children [{:fx/type :label
+               :text    "TODO"}
+              {:fx/type  :h-box
+               :spacing  10
+               :children [{:fx/type          :slider
+                           :min-width        240
+                           :block-increment  1
+                           :major-tick-unit  10
+                           :show-tick-labels true
+                           :snap-to-ticks    true
+                           :min              min
+                           :max              max
+                           :value            value
+                           }
+                          {:fx/type :label
+                           :text    "TODO"}]
+               }]})
+
 (defn matcher-parameters [state]
   ; TODO
   {:fx/type    :v-box
    :style      {:-fx-background-color :white}
    :min-height 10
+   :spacing    20
+   :children   [{:fx/type slider
+                 :min     0
+                 :max     50
+                 :value   33
+                 }
+                {:fx/type slider
+                 :min     0
+                 :max     50
+                 :value   33
+                 }
+                ]
    })
 
 (defn camera-parameters [state]
@@ -28,6 +61,7 @@
   {:fx/type    :v-box
    :style      {:-fx-background-color :white}
    :min-height 10
+   :spacing    10
    })
 
 (defn render-parameters [state]
