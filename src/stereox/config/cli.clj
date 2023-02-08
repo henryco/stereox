@@ -23,12 +23,6 @@
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
-   [nil "--codec CODEC" "Camera output codec"
-    :default [\M \J \P \G]
-    :default-desc "MJPG"
-    :parse-fn #(-> (str %) .trim .toUpperCase .toCharArray seq vec)
-    :validate [#(= 4 (count %)) "Must be 4 chars codec code, eg. MJPG"]]
-
    ["-z" "--buffer-size NUMBER" "Buffer size (frames)"
     :id :buffer
     :default 2
@@ -40,15 +34,17 @@
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 300) "Must be a number between 0 and 300"]]
 
-   ["-o" "--output-folder FOLDER_NAME" "Folder to write configuration files to"
+   [nil "--config FOLDER_NAME" "Folder with configuration files"
+    :id :config-folder
+    :default (io/file "config")
     :parse-fn #(io/file %)
-    :missing "Output folder option is required"
     :validate [#(or (not (.exists %)) (.isDirectory %)) "File should be DIRECTORY or not exist"]]
 
-   ["-c" "--config-folder FOLDER_NAME" "Folder with calibration files"
-    :parse-fn #(io/file %)
-    :missing "Config folder option is required"
-    :validate [#(or (not (.exists %)) (.isDirectory %)) "File should be DIRECTORY or not exist"]]
+   [nil "--codec CODEC" "Camera output codec"
+    :default [\M \J \P \G]
+    :default-desc "MJPG"
+    :parse-fn #(-> (str %) .trim .toUpperCase .toCharArray seq vec)
+    :validate [#(= 4 (count %)) "Must be 4 chars codec code, eg. MJPG"]]
 
    [nil "--help"]])
 

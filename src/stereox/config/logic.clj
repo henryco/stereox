@@ -23,7 +23,6 @@
 (defrecord ConfigParameters
   [^IPersistentCollection ids
    ^IPersistentCollection codec
-   ^File output-folder
    ^File config-folder
    ^Integer width
    ^Integer height

@@ -5,7 +5,8 @@
            (java.util Date))
   (:gen-class))
 
-(def CALIB_POSTFIX ".soxcd")
+(def CALIB_POSTFIX ".sxpcd")
+(def CALIB_SOLO_POSTFIX ".sxscd")
 
 (defn prep-dirs
   "Creates directory if not exists"
@@ -25,13 +26,13 @@
 (defn prepare-calib-name
   "Creates file name for calibration data"
   {:static true}
-  [ids]
+  [ids postfix]
   (str
     (reduce #(str %1 "_" %2)
             (.format (SimpleDateFormat. "yyyyMMddHHmmSSS")
                      (Date.))
             ids)
-    CALIB_POSTFIX))
+    postfix))
 
 (defn check-dir-exists
   "Checks if directory exists"
