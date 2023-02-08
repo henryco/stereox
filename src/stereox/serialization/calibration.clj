@@ -41,7 +41,7 @@
   [^SingleCalibrationData data ^DataOutput os]
   (.writeUTF os (:id data))
   (cc/write-bytes os (cc/size-to-bytes (:size data)))
-  (.writeDouble (:rmse data))
+  (.writeDouble os (double (:rmse data)))
   (cc/write-bytes os (cc/mat-to-bytes (:camera_matrix data)))
   (cc/write-bytes os (cc/mat-to-bytes (:distortion_coefficients data)))
   (let [sequence (:rvecs data)]

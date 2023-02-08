@@ -269,10 +269,10 @@
     (fn [^Calibr8Data data]
       (log/info "Saving single calibration results...")
       (let [id_list [(:id data)]
-            dir_name (su/prepare-dir-name (.width (:size data))
-                                          (.height (:size data))
+            dir_name (su/prepare-dir-name (.width (:image_size data))
+                                          (.height (:image_size data))
                                           id_list)
-            file_name (su/prepare-calib-name id_list)
+            file_name (su/prepare-calib-name id_list su/CALIB_SOLO_POSTFIX)
             output_dir (File. ^File (:directory @*params)
                               ^String dir_name)
             output_file (File. ^File output_dir
@@ -290,7 +290,7 @@
     Calibr8Data_vec)
   Calibr8Data_vec)
 
-(defn save-calibrated
+(defn save-calibrated-stereo
   "Save calibrated data"
   {:static false}
   [^CalibrationData data]
@@ -300,7 +300,7 @@
         dir_name (su/prepare-dir-name (.width (:size data))
                                       (.height (:size data))
                                       id_list)
-        file_name (su/prepare-calib-name id_list)
+        file_name (su/prepare-calib-name id_list su/CALIB_POSTFIX)
         output_dir (File. ^File (:directory @*params)
                           ^String dir_name)
         output_file (File. ^File output_dir
@@ -446,7 +446,7 @@
                                                 (:undistortion_map %)
                                                 (:rectification_map %))
               pair)
-        (save-calibrated
+        (save-calibrated-stereo
           (CalibrationData. img_size
                             rotation_mtx
                             translation_mtx
@@ -472,8 +472,8 @@
            (let [c_data (sc/single-calibration-from-file
                           (first (su/list-candidates
                                    directory
-                                   (.width (:image_size data))
-                                   (.height (:image_size data))
+                                   (int (.width (:image_size data)))
+                                   (int (.height (:image_size data)))
                                    su/CALIB_SOLO_POSTFIX
                                    (:id data))))]
              (->Calibr8Data
@@ -502,8 +502,7 @@
                              [left right])
                            (catch Exception _
                              (log/warn "Single calibration data not found")
-                             (save-solo-calibrated
-                               (calibr8-each left right))))]
+                             (calibr8-each left right)))]
       (calibr8-stereo single_data))))
 
 (defn calibrate-single
