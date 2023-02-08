@@ -22,7 +22,7 @@
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
    ["-n" "--images-number NUMBER" "Number of images"
-    :default 11
+    :default 20
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 3 % 256) "Must be a number between 4 and 256"]]
 
@@ -46,12 +46,6 @@
     :default 480
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
-
-   [nil "--codec CODEC" "Camera output codec"
-    :default [\M \J \P \G]
-    :default-desc "MJPG"
-    :parse-fn #(-> (str %) .trim .toUpperCase .toCharArray seq vec)
-    :validate [#(= 4 (count %)) "Must be 4 chars codec code, eg. MJPG"]]
 
    ["-q" "--quality NUMBER" "Quality from 1 to 4, lower == faster"
     :default 3
@@ -93,10 +87,19 @@
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
-   ["-o" "--output-folder FOLDER_NAME" "Folder to write calibration files to"
+   [nil "--config FOLDER_NAME" "Folder to read/write calibration files from/to"
+    :id :config-folder
+    :default (io/file "config")
     :parse-fn #(io/file %)
-    :missing "Output folder option is required"
     :validate [#(or (not (.exists %)) (.isDirectory %)) "File should be DIRECTORY or not exist"]]
+
+   [nil "--codec CODEC" "Camera output codec"
+    :default [\M \J \P \G]
+    :default-desc "MJPG"
+    :parse-fn #(-> (str %) .trim .toUpperCase .toCharArray seq vec)
+    :validate [#(= 4 (count %)) "Must be 4 chars codec code, eg. MJPG"]]
+
+   [nil "--full" "Either should use previous calibration files or not"]
 
    [nil "--help"]])
 

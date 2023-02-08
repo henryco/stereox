@@ -1,5 +1,5 @@
-/output/**
-/output
+/config/**
+/config
 /target
 /classes
 /checkouts

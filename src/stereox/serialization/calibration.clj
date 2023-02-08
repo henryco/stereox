@@ -1,9 +1,19 @@
 (ns stereox.serialization.calibration
   (:require [stereox.utils.commons :as cc]
             [taoensso.nippy :as nippy])
-  (:import (java.io DataInput DataOutput File FileInputStream FileOutputStream)
+  (:import (clojure.lang ISeq)
+           (java.io DataInput DataOutput File FileInputStream FileOutputStream)
            (org.opencv.core Mat Rect Size))
   (:gen-class))
+
+(defrecord SingleCalibrationData
+  [^String id
+   ^Size size
+   ^Double rmse
+   ^Mat camera_matrix
+   ^Mat distortion_coefficients
+   ^ISeq rvecs
+   ^ISeq tvecs])
 
 (defrecord CameraData
   [^String id
@@ -24,6 +34,45 @@
    ^Mat disparity_to_depth_matrix
    ^Mat disparity_to_depth_matrix_v2
    camera_data])
+
+(defn- write-single-calibration-data
+  "Writes single calibration data object to OS"
+  {:static true}
+  [^SingleCalibrationData data ^DataOutput os]
+  (.writeUTF os (:id data))
+  (cc/write-bytes os (cc/size-to-bytes (:size data)))
+  (.writeDouble (:rmse data))
+  (cc/write-bytes os (cc/mat-to-bytes (:camera_matrix data)))
+  (cc/write-bytes os (cc/mat-to-bytes (:distortion_coefficients data)))
+  (let [sequence (:rvecs data)]
+    (.writeInt os (count sequence))
+    (run! #(cc/write-bytes os (cc/mat-to-bytes %))
+          sequence))
+  (let [sequence (:tvecs data)]
+    (.writeInt os (count sequence))
+    (run! #(cc/write-bytes os (cc/mat-to-bytes %))
+          sequence)))
+
+(defn- read-single-calibration-data
+  "Reads single calibration data object from input stream"
+  {:tag    SingleCalibrationData
+   :static true}
+  [^DataInput is]
+  (->SingleCalibrationData (.readUTF is)
+                           (cc/bytes-to-size (cc/read-bytes is))
+                           (.readDouble is)
+                           (cc/bytes-to-mat (cc/read-bytes is))
+                           (cc/bytes-to-mat (cc/read-bytes is))
+                           (let [sequence (range (.readInt is))]
+                             (doall
+                               (map (fn [& _]
+                                      (cc/bytes-to-mat (cc/read-bytes is)))
+                                    sequence)))
+                           (let [sequence (range (.readInt is))]
+                             (doall
+                               (map (fn [& _]
+                                      (cc/bytes-to-mat (cc/read-bytes is)))
+                                    sequence)))))
 
 (defn- write-camera-data
   "Writes camera data object to output stream"
@@ -89,6 +138,26 @@
 
 (nippy/extend-freeze CalibrationData :serialization/calibration-data [o s] (write-calibration-data o s))
 (nippy/extend-thaw :serialization/calibration-data [s] (read-calibration-data s))
+
+(nippy/extend-freeze SingleCalibrationData :serialization/single-calibration-data [o s] (write-single-calibration-data o s))
+(nippy/extend-thaw :serialization/single-calibration-data [s] (read-single-calibration-data s))
+
+(defn single-calibration-to-file
+  "Writes single calibration data to file"
+  {:static true}
+  [^SingleCalibrationData data ^File file]
+  (with-open [o (FileOutputStream. file)]
+    (.write o ^bytes (nippy/freeze data))))
+
+(defn single-calibration-from-file
+  "Reads single calibration data from file"
+  {:tag    SingleCalibrationData
+   :static true}
+  [^File file]
+  (with-open [i (FileInputStream. file)]
+    (let [bts (.readAllBytes i)
+          rsl (nippy/thaw bts)]
+      rsl)))
 
 (defn calibration-to-file
   "Writes calibration data to file"

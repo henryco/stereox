@@ -26,7 +26,8 @@
    ^Integer columns
    ^Integer quality
    ^Integer delay
-   ^Integer total])
+   ^Integer total
+   ^Boolean full])
 
 (defrecord CBData
   [^Mat image_original
@@ -44,6 +45,17 @@
    ^ArrayList object_points
    ^ArrayList image_points
    ^Size image_size])
+
+(defrecord Calib8Data
+  [^String id
+   ^ArrayList object_points
+   ^ArrayList image_points
+   ^Size image_size
+   ^Double rmse
+   ^Mat camera_matrix
+   ^Mat distortion_coeffs
+   ^List rvecs
+   ^List tvecs])
 
 (def ^:private *params
   "Props"
@@ -69,7 +81,7 @@
          :width  nil
          :height nil
          :camera {:viewport {:width 0 :height 0 :min-x 0 :min-y 0}
-                  :image    []}
+                  :number   1 :image []}
          }))
 
 (defn image-adapt [matrices]
@@ -98,14 +110,15 @@
 
 (defn on-win-change []
   (let [s (-> @*state :scale)
+        n (-> @*state :camera :number)
         ow (-> @*state :camera :viewport :width)
         oh (-> @*state :camera :viewport :height)
         ww (-> @*state :width)
         hh (-> @*state :height)]
     (if (and (some? ww) (some? hh))
-      (let [[dw dh] (map - [ww hh] [(* ow s 2) (* oh s)])]
+      (let [[dw dh] (map - [ww hh] [(* ow s n) (* oh s)])]
         (if (< dw dh)
-          (swap! *state assoc :scale (/ ww ow 2))
+          (swap! *state assoc :scale (/ ww ow n))
           (swap! *state assoc :scale (/ hh oh)))
         )
       )))
@@ -129,7 +142,7 @@
   {:fx/type    :h-box
    :style      {:-fx-background-color :black
                 :-fx-alignment        :center}
-   :min-width  (-> camera :viewport :width (* 2 scale))
+   :min-width  (-> camera :viewport :width (* (:number camera) scale))
    :min-height (-> camera :viewport :height (* scale))
    :children   (-> #(merge {:fx/type        :image-view
                             :viewport       (:viewport camera)
@@ -247,8 +260,29 @@
                     img_p
                     (-> data (first) (:image) (.size)))))
 
+(defn save-solo-calibrated
+  "Save solo calibration data"
+  {:static false}
+  [calib8data_vec]
+  (run!
+    (fn [^Calib8Data data]
+      (log/info "Saving single calibration results...")
+      (let [id_list [(:id data)]
+            dir_name (su/prepare-dir-name (.width (:size data))
+                                          (.height (:size data))
+                                          id_list)
+            file_name (su/prepare-calib-name id_list)
+            output_dir (File. ^File (:directory @*params)
+                              ^String dir_name)
+            output_file (File. ^File output_dir
+                               ^String file_name)]
+        (su/prep-dirs output_dir)
+        (serial/single-calibration-to-file data output_file)))
+    calib8data_vec))
+
 (defn save-calibrated
   "Save calibrated data"
+  {:static false}
   [^CalibrationData data]
   (log/info "Saving calibration results...")
   (let [id_list (map #(:id %)
@@ -264,24 +298,12 @@
     (su/prep-dirs output_dir)
     (serial/calibration-to-file data output_file)))
 
-(defrecord Calib8Data
-  [^String id
-   ^ArrayList object_points
-   ^ArrayList image_points
-   ^Size image_size
-   ^Double rmse
-   ^Mat camera_matrix
-   ^Mat distortion_coeffs
-   ^List rvecs
-   ^List tvecs])
-
 (defn calibr8-each
   "Calibrates separately each camera in stereo pair.
   Returns:
     Calib8Data[]"
   {:static true}
-  [^OneOfPairData left
-   ^OneOfPairData right]
+  [& vec_of_data]
   (log/info "calibrate each...")
   (map (fn [p] (deref p))
        (map
@@ -305,13 +327,13 @@
                               :distortion_coeffs d_cef
                               :rvecs             rvecs
                               :tvecs             tvecs})))))
-         [left right])))
+         (flatten vec_of_data))))
 
 (defn calibr8-stereo
   "Calibrates stereo pair using data from previous solo calibration
   Expects:
     Calib8Data[]"
-  {:static true}
+  {:static false}
   [[^Calib8Data left
     ^Calib8Data right]]
   (log/info "calibrate stereo...")
@@ -433,28 +455,39 @@
                                  pair)))
         ))))
 
-(defn calibrate-pair
+(defn calibrate-pair-full
+  {:static false}
   [^OneOfPairData left
    ^OneOfPairData right]
   (log/info "calibrate pair...")
-  (calibr8-stereo
-    (calibr8-each left
-                  right)))
+  (let [single_data (calibr8-each left right)]
+    (save-solo-calibrated single_data)
+    (calibr8-stereo single_data)))
+
+(defn calibrate-single
+  {:static false}
+  [^OneOfPairData data]
+  (log/info "calibrate single...")
+  (let [data (calibr8-each data)]
+    (save-solo-calibrated data)))
 
 (defn stereo-calibration
   "Camera stereo calibration.
   Expects vector of OneOfPairData (each element corresponds to some camera)"
+  {:static false}
   [configuration]
   (let [size (count configuration)]
     (cond
-      (= 1 size) (throw (NoSuchMethodException.             ; IMPLEMENT LATER MAYBE?
-                          "Single calibration not implemented"))
-      (= 2 size) (calibrate-pair (first configuration)
-                                 (last configuration))
+      ; TODO CALIBRATION FROM PRE FILES
+      (= 1 size) (calibrate-single (first configuration))
+      (= 2 size) (calibrate-pair-full (first configuration)
+                                      (last configuration))
       :else (throw (NoSuchMethodException.                  ; IMPLEMENT LATER MAYBE?
                      "More then 2 cameras actually not supported")))))
 
-(defn calibrate-cameras []
+(defn calibrate-cameras
+  {:static false}
+  []
   (try
     (let [calibration_map (reduce (fn [o n]
                                     (let [key (str (:id n))]
@@ -474,6 +507,7 @@
   "Store data from vector of CBData.
   IF stored enough data, shutdowns ui and calibrate camera.
   Expects vector or sequence of CBData"
+  {:static false}
   [data]
   (swap! *images
          conj
@@ -500,11 +534,12 @@
     (if (some? images)
       (swap! *state assoc-in [:camera :image] images))))
 
-(defn calibrate [& {:keys [output-folder
+(defn calibrate [& {:keys [config-folder
                            images-number
                            square-size
                            columns
                            quality
+                           full
                            rows
                            width
                            height
@@ -513,9 +548,9 @@
                            ] :as all}]
   (log/info (pr-str all))
   ; setup calibration properties
-  (reset! *params (->Props ids output-folder square-size
+  (reset! *params (->Props ids config-folder square-size
                            rows columns quality delay
-                           images-number))
+                           images-number full))
   ; setup camera
   (reset! *camera (camera/create all))
   ; setup timer
@@ -523,6 +558,8 @@
   ; setup javafx
   (swap! *state assoc-in [:camera :viewport]
          {:width width :height height :min-x 0 :min-y 0})
+  (swap! *state assoc-in [:camera :number]
+         (count ids))
   ;; Convenient way to add watch to an atom + immediately render app
   (fx/mount-renderer *state renderer)
   (start-ui-loop main-cb))
