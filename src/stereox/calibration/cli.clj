@@ -99,7 +99,8 @@
     :parse-fn #(-> (str %) .trim .toUpperCase .toCharArray seq vec)
     :validate [#(= 4 (count %)) "Must be 4 chars codec code, eg. MJPG"]]
 
-   [nil "--full" "Either should use previous calibration files or not"]
+   [nil "--full" "Either should use previous calibration files or not"
+    :default false]
 
    [nil "--help"]])
 

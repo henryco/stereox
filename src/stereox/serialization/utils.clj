@@ -5,7 +5,8 @@
            (java.util Date))
   (:gen-class))
 
-(def CALIB_POSTFIX ".soxcd")
+(def CALIB_POSTFIX ".sxpcd")
+(def CALIB_SOLO_POSTFIX ".sxscd")
 
 (defn prep-dirs
   "Creates directory if not exists"

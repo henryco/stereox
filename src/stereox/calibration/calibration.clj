@@ -1,6 +1,7 @@
 (ns stereox.calibration.calibration
   (:require [cljfx.api :as fx]
             [stereox.cv.stereo-camera :as camera]
+            [stereox.serialization.calibration :as sc]
             [stereox.serialization.calibration :as serial]
             [stereox.serialization.utils :as su]
             [stereox.utils.commons :as commons]
@@ -8,14 +9,14 @@
             [taoensso.timbre :as log])
   (:import (clojure.lang PersistentVector)
            (java.io ByteArrayInputStream File)
-           (java.util ArrayList List)
+           (java.util ArrayList Collection List)
            (javafx.animation AnimationTimer)
            (javafx.application Platform)
            (javafx.scene.image Image)
            (org.opencv.calib3d Calib3d)
            (org.opencv.core CvType Mat MatOfFloat4 MatOfPoint2f Rect Size TermCriteria)
            (org.opencv.imgproc Imgproc)
-           (stereox.serialization.calibration CalibrationData CameraData))
+           (stereox.serialization.calibration CalibrationData CameraData SingleCalibrationData))
   (:gen-class))
 
 (defrecord Props
@@ -46,7 +47,7 @@
    ^ArrayList image_points
    ^Size image_size])
 
-(defrecord Calib8Data
+(defrecord Calibr8Data
   [^String id
    ^ArrayList object_points
    ^ArrayList image_points
@@ -263,9 +264,9 @@
 (defn save-solo-calibrated
   "Save solo calibration data"
   {:static false}
-  [calib8data_vec]
+  [Calibr8Data_vec]
   (run!
-    (fn [^Calib8Data data]
+    (fn [^Calibr8Data data]
       (log/info "Saving single calibration results...")
       (let [id_list [(:id data)]
             dir_name (su/prepare-dir-name (.width (:size data))
@@ -277,8 +278,17 @@
             output_file (File. ^File output_dir
                                ^String file_name)]
         (su/prep-dirs output_dir)
-        (serial/single-calibration-to-file data output_file)))
-    calib8data_vec))
+        (serial/single-calibration-to-file
+          (SingleCalibrationData. (:id data)
+                                  (:image_size data)
+                                  (:rmse data)
+                                  (:camera_matrix data)
+                                  (:distortion_coeffs data)
+                                  (into [] (:rvecs data))
+                                  (into [] (:tvecs data)))
+          output_file)))
+    Calibr8Data_vec)
+  Calibr8Data_vec)
 
 (defn save-calibrated
   "Save calibrated data"
@@ -301,7 +311,7 @@
 (defn calibr8-each
   "Calibrates separately each camera in stereo pair.
   Returns:
-    Calib8Data[]"
+    Calibr8Data[]"
   {:static true}
   [& vec_of_data]
   (log/info "calibrate each...")
@@ -321,7 +331,7 @@
                                                  rvecs
                                                  tvecs)]
                (log/info "Camera [" (:id data) "] RMSE: " rmse)
-               (map->Calib8Data
+               (map->Calibr8Data
                  (merge data {:rmse              rmse
                               :camera_matrix     c_mat
                               :distortion_coeffs d_cef
@@ -332,10 +342,10 @@
 (defn calibr8-stereo
   "Calibrates stereo pair using data from previous solo calibration
   Expects:
-    Calib8Data[]"
+    Calibr8Data[]"
   {:static false}
-  [[^Calib8Data left
-    ^Calib8Data right]]
+  [[^Calibr8Data left
+    ^Calibr8Data right]]
   (log/info "calibrate stereo...")
   (let [img_size (:image_size left)
         cam_mtx1 (Mat.)
@@ -455,14 +465,46 @@
                                  pair)))
         ))))
 
+(defn- read-solo-calibration-data [directory pair_data]
+  (doall
+    (map (fn [^OneOfPairData data]
+           (log/info "Reading prepared calibration data...")
+           (let [c_data (sc/single-calibration-from-file
+                          (first (su/list-candidates
+                                   directory
+                                   (.width (:image_size data))
+                                   (.height (:image_size data))
+                                   su/CALIB_SOLO_POSTFIX
+                                   (:id data))))]
+             (->Calibr8Data
+               (:id data)
+               (:object_points data)
+               (:image_points data)
+               (:image_size data)
+               (:rmse c_data)
+               (:camera_matrix c_data)
+               (:distortion_coefficients c_data)
+               (ArrayList. ^Collection (:rvecs c_data))
+               (ArrayList. ^Collection (:tvecs c_data)))))
+         pair_data)))
+
 (defn calibrate-pair-full
   {:static false}
   [^OneOfPairData left
    ^OneOfPairData right]
   (log/info "calibrate pair...")
-  (let [single_data (calibr8-each left right)]
-    (save-solo-calibrated single_data)
-    (calibr8-stereo single_data)))
+  (if (:full @*params)
+    (let [single_data (calibr8-each left right)]
+      (save-solo-calibrated single_data)
+      (calibr8-stereo single_data))
+    (let [single_data (try (read-solo-calibration-data
+                             (:directory @*params)
+                             [left right])
+                           (catch Exception _
+                             (log/warn "Single calibration data not found")
+                             (save-solo-calibrated
+                               (calibr8-each left right))))]
+      (calibr8-stereo single_data))))
 
 (defn calibrate-single
   {:static false}
@@ -478,7 +520,6 @@
   [configuration]
   (let [size (count configuration)]
     (cond
-      ; TODO CALIBRATION FROM PRE FILES
       (= 1 size) (calibrate-single (first configuration))
       (= 2 size) (calibrate-pair-full (first configuration)
                                       (last configuration))
@@ -551,6 +592,7 @@
   (reset! *params (->Props ids config-folder square-size
                            rows columns quality delay
                            images-number full))
+  (log/info (pr-str @*params))
   ; setup camera
   (reset! *camera (camera/create all))
   ; setup timer
