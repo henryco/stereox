@@ -134,10 +134,10 @@
 
   (options [_]
     [["min-disparity" 0 100]
-     ["num-disparities" 0 100]
-     ["block-size" 1 12]
-     ["p1" 0 1000]
-     ["p2" 1 1000]
+     ["num-disparities" 1 100]
+     ["block-size" 1 100]
+     ["p1" 0 5000]
+     ["p2" 1 5000]
      ["max-disparity" 0 1000]
      ["pre-filter-cap" 0 100]
      ["uniqueness" 4 16]
@@ -151,19 +151,19 @@
 
   (setup [_]
     (reset! *matcher (StereoSGBM/create
-                       (int (:min-disparity *params))
-                       (* 16 (int (:num-disparities *params)))
-                       (max 0 (min 12 (to-odd (int (:block-size *params)))))
-                       (min (- (int (:p2 *params)) 1)
-                            (int (:p1 *params)))
-                       (max (+ (int (:p1 *params)) 1)
-                            (int (:p2 *params)))
-                       (int (:max-disparity *params))
-                       (int (:pre-filter-cap *params))
-                       (min 16 (max 4 (int (:uniqueness *params))))
-                       (min 201 (max 0 (int (:speckle-window-size *params))))
-                       (max 0 (int (:speckle-range *params)))
-                       (int (:mode *params)))))
+                       (int (:min-disparity @*params))
+                       (* 16 (max 1 (int (:num-disparities @*params))))
+                       (max 0 (min 100 (to-odd (int (:block-size @*params)))))
+                       (min (- (int (:p2 @*params)) 1)
+                            (int (:p1 @*params)))
+                       (max (+ (int (:p1 @*params)) 1)
+                            (int (:p2 @*params)))
+                       (int (:max-disparity @*params))
+                       (int (:pre-filter-cap @*params))
+                       (min 16 (max 4 (int (:uniqueness @*params))))
+                       (min 201 (max 0 (int (:speckle-window-size @*params))))
+                       (max 0 (int (:speckle-range @*params)))
+                       (int (:mode @*params)))))
 
   (setup [this m]
     (dosync
@@ -207,8 +207,8 @@
      matcher))
   ([] (create-cpu-stereo-sgbm
         (map->StereoSGBMProp
-          {:min-disparity       16
-           :num-disparities     5
+          {:min-disparity       1
+           :num-disparities     1
            :block-size          3
            :p1                  216
            :p2                  284

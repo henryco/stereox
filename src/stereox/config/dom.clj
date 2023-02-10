@@ -20,27 +20,27 @@
    })
 
 (defn slider [{:keys [id min max value update-fn]}]
-  {:fx/type  :v-box
-   :spacing  5
-   :children [{:fx/type :label
-               :text    id}
-              {:fx/type  :h-box
-               :spacing  10
-               :children [{:fx/type          :slider
-                           :min-width        240
-                           :block-increment  1
-                           :major-tick-unit  1
-                           :minor-tick-count 1
-                           :show-tick-labels true
-                           :snap-to-ticks    true
-                           :min              min
-                           :max              max
-                           :value            value
-                           :on-value-changed update-fn
-                           }
-                          {:fx/type :label
-                           :text    (str value)}]
-               }]})
+  {:fx/type :h-box
+   :spacing 5
+   :children [{:fx/type :region :min-width 1 :min-height 1}
+              {:fx/type  :v-box
+               :spacing  5
+               :children [{:fx/type :label
+                           :text    id}
+                          {:fx/type  :h-box
+                           :spacing  10
+                           :children [{:fx/type          :slider
+                                       :min-width        240
+                                       :min              min
+                                       :max              max
+                                       :value            value
+                                       :on-value-changed update-fn
+                                       }
+                                      {:fx/type :label
+                                       :text    (str value)}]
+                           }]}
+              ]}
+  )
 
 (defn matcher-parameters [{:keys [matcher]}]
   {:fx/type    :v-box
