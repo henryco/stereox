@@ -44,12 +44,12 @@
    :style      {:-fx-background-color :white}
    :min-height 10
    :spacing    20
-   :children   (map (fn [{:keys [id max val]}]
+   :children   (map (fn [{:keys [id min max val]}]
                       {:fx/type   slider
                        :value     val
                        :id        id
                        :max       max
-                       :min       0
+                       :min       min
                        :update-fn #(on-matcher-update id (int %))})
                     matcher)
    })
@@ -63,14 +63,22 @@
    })
 
 (defn render-parameters [state]
-  {:fx/type   :v-box
-   :style     {:-fx-background-color :white}
-   :min-width (-> state :panel :width)
-   :max-width (-> state :panel :width)
-   :children  [{:fx/type matcher-parameters
-                :matcher (-> state :controls :matcher)}
-               {:fx/type camera-parameters
-                :camera  (-> state :controls :camera)}]
+  {:fx/type    :v-box
+   :style      {:-fx-background-color :white}
+   :min-width  (-> state :panel :width)
+   :max-width  (-> state :panel :width)
+   :max-height (:height state)
+   :children   [{:fx/type     :scroll-pane
+                 :hbar-policy :NEVER
+                 :content     {:fx/type   :v-box
+                               :style     {:-fx-background-color :white}
+                               :min-width (-> state :panel :width)
+                               :max-width (-> state :panel :width)
+                               :children  [{:fx/type matcher-parameters
+                                            :matcher (-> state :controls :matcher)}
+                                           {:fx/type camera-parameters
+                                            :camera  (-> state :controls :camera)}]}
+                 }]
    })
 
 (defn root [state]

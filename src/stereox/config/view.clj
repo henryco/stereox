@@ -19,15 +19,15 @@
 (def ^:private *state
   "JavaFX UI state"
   (atom {:title    "StereoX Pattern Matching configuration"
-         :controls {:matcher [{:id "" :max 0 :val 0}]
-                    :camera  [{:id "" :max 0 :val 0}]}
+         :controls {:matcher [{:id "" :val 0 :min 0 :max 0}]
+                    :camera  [{:id "" :val 0 :min 0 :max 0}]}
          :camera   {:viewport {:width 1 :height 1 :min-x 0 :min-y 0}
                     :image    nil}
          :panel    {:width 300}
          :scale    1.
          :alive    true
-         :width    nil
-         :height   nil
+         :width    1
+         :height   1
          }))
 
 (defn- shutdown [& {:keys [code]}]
@@ -76,11 +76,11 @@
 
 (defn- on-matcher-update [k v]
   (swap! *state assoc-in [:controls :matcher]
-         (-> (map (fn [{:keys [id max] :as args}]
+         (-> (map (fn [{:keys [id max min] :as args}]
                     (if (.equalsIgnoreCase id k)
                       (do (if (not= v val)
                             (update-matcher-params k v))
-                          {:id id :max max :val v})
+                          {:id id :min min :max max :val v})
                       args))
                   (-> @*state :controls :matcher))
              (doall)
@@ -91,10 +91,12 @@
 
 (defn- initialize-state [{:as args}]
   (swap! *state assoc-in [:controls :matcher]
-         (-> (map (fn [[k v]]
+         (-> (map (fn [[k min max]]
                     {:val (get (logic/matcher-params @*logic)
                                (keyword k))
-                     :max v :id k})
+                     :min min
+                     :max max
+                     :id k})
                   (logic/matcher-options @*logic))
              (doall)
              (vec)))

@@ -59,8 +59,22 @@
                                       (max 5 (to-odd (int (:window-size @*params)))))))
 
   (options [_]
-    {"search-range" 100
-     "window-size"  100})
+    [["search-range" 0 100]
+     ["window-size"  5 100]
+     ["window-size"  5 100]
+     ["window-size"  5 100]
+     ["window-size"  5 100]
+     ["window-size"  5 100]
+     ["window-size"  5 100]
+     ["window-size"  5 100]
+     ["window-size"  5 100]
+     ["window-size"  5 100]
+     ["window-size"  5 100]
+     ["window-size"  5 100]
+     ["window-size"  5 100]
+     ["window-size"  5 100]
+     ["window-size"  5 100]
+     ])
 
   (setup [this m]
     (dosync
@@ -109,3 +123,33 @@
            :missing      false
            :ddepth       -1
            }))))
+
+(deftype CpuStereoSGBM [^Atom *params
+                        ^Atom *matcher]
+  BlockMatcher
+
+  (options [this]
+    )
+
+  (setup [this]
+    )
+
+  (setup [this map]
+    )
+
+  (setup [this k v]
+    )
+
+  (param [this key]
+    )
+
+  (params [this]
+    )
+
+  (disparity-map [this images]
+    )
+
+  (project3d [this disparity disparity-to-depth-map]
+    )
+
+  )
