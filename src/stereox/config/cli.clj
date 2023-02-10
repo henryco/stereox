@@ -34,6 +34,13 @@
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 300) "Must be a number between 0 and 300"]]
 
+   ["-m" "--matcher" "Stereo matcher algorithm [ cpu-bm | cpu-sgbm | gpu-sgbm ]"
+    :default :cpu-bm
+    :default-desc "cpu-bm"
+    :parse-fn #(-> % (.toString) (.trim) (.toLowerCase) (keyword))
+    :validate [#(some (fn [v] (= % v)) [:cpu-bm :cpu-sgbm :cuda-sgbm])
+               "Must be one of: [ cpu-bm | cpu-sgbm | cuda-sgbm ]"]]
+
    [nil "--config FOLDER_NAME" "Folder with configuration files"
     :id :config-folder
     :default (io/file "config")

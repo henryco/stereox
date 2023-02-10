@@ -6,7 +6,7 @@
             [stereox.cv.block-matching :as bm]
             [stereox.serialization.utils :as su]
             [stereox.serialization.calibration :as sc])
-  (:import (clojure.lang Atom IPersistentCollection)
+  (:import (clojure.lang Atom IPersistentCollection Keyword)
            (java.io File)
            (org.opencv.core Mat)
            (org.opencv.imgproc Imgproc)
@@ -27,7 +27,8 @@
    ^Integer width
    ^Integer height
    ^Integer buffer
-   ^Integer fps])
+   ^Integer fps
+   ^Keyword matcher])
 
 (defrecord LogicState
   [^StereoNormalizer normalizer
@@ -113,8 +114,8 @@
         params (map->ConfigParameters args)]
     (->ConfigLogic
       (atom
-        (map->LogicState {:normalizer    (nrm/create-normalizer c_data (:ids params))
-                          :block-matcher (bm/create-cpu-stereo-bm)
+        (map->LogicState {:block-matcher (bm/create-stereo-matcher (:matcher params))
+                          :normalizer    (nrm/create-normalizer c_data (:ids params))
                           :camera        (camera/create params)
                           :calibration   c_data
                           }))
