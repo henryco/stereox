@@ -1,19 +1,22 @@
 (in-ns 'stereox.config.view)
 
 (defn render-image [{:keys [camera scale]}]
-  {:fx/type    :v-box
-   :style      {:-fx-background-color :darkgray
-                :-fx-alignment        :center}
-   :min-width  (-> camera :viewport :width (* scale))
-   :min-height (-> camera :viewport :height (* scale))
-   :children   (if (some? (:image camera))
-                 [{:fx/type        :image-view
-                   :preserve-ratio true
-                   :fit-height     (-> camera :viewport :height (* scale))
-                   :viewport       (:viewport camera)
-                   :image          (:image camera)
-                   }]
-                 [])
+  {:fx/type     :v-box
+   :style       {:-fx-background-color :darkgray}
+   :min-width   (-> camera :viewport :width (* scale))
+   :min-height  (-> camera :viewport :height (* scale))
+   :max-width   (-> camera :viewport :width (* scale))
+   :max-height  (-> camera :viewport :height (* scale))
+   :pref-width  (-> camera :viewport :width (* scale))
+   :pref-height (-> camera :viewport :height (* scale))
+   :children    (if (some? (:image camera))
+                  [{:fx/type        :image-view
+                    :preserve-ratio true
+                    :fit-height     (-> camera :viewport :height (* scale))
+                    :viewport       (:viewport camera)
+                    :image          (:image camera)
+                    }]
+                  [])
    })
 
 (defn slider [{:keys [id min max value update-fn]}]
@@ -90,9 +93,13 @@
    :on-height-changed on-win-height-change
    :on-width-changed  on-win-width-change
    :scene             {:fx/type :scene
+                       :on-height-changed on-scene-height-change
+                       :on-width-changed  on-scene-width-change
                        :root    {:fx/type :border-pane
-                                 :style   {:-fx-background-color :black
+                                 :style   {:-fx-background-color :darkgray
                                            :-fx-alignment        :center}
                                  :right   (merge state {:fx/type render-parameters})
-                                 :center  (merge state {:fx/type render-image})}}
+                                 :center  (merge state {:fx/type render-image})
+                                 }
+                       }
    })

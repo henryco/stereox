@@ -24,6 +24,8 @@
          :camera   {:viewport {:width 1 :height 1 :min-x 0 :min-y 0}
                     :image    nil}
          :panel    {:width 300}
+         :init     {:w false
+                    :h false}
          :scale    1.
          :alive    true
          :width    1
@@ -50,10 +52,22 @@
           (swap! *state assoc :scale (/ hh oh)))))))
 
 (defn- on-win-height-change [v]
+  (if-not (-> @*state :init :h)
+    (do (swap! *state assoc :height v)
+        (on-win-change))))
+
+(defn- on-win-width-change [v]
+  (if-not (-> @*state :init :w)
+    (do (swap! *state assoc :width v)
+        (on-win-change))))
+
+(defn- on-scene-height-change [v]
+  (swap! *state assoc-in [:init :h] true)
   (swap! *state assoc :height v)
   (on-win-change))
 
-(defn- on-win-width-change [v]
+(defn- on-scene-width-change [v]
+  (swap! *state assoc-in [:init :w] true)
   (swap! *state assoc :width v)
   (on-win-change))
 
@@ -96,7 +110,7 @@
                                (keyword k))
                      :min min
                      :max max
-                     :id k})
+                     :id  k})
                   (logic/matcher-options @*logic))
              (doall)
              (vec)))

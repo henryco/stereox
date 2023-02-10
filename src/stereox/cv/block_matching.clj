@@ -60,21 +60,7 @@
 
   (options [_]
     [["search-range" 0 100]
-     ["window-size"  5 100]
-     ["window-size"  5 100]
-     ["window-size"  5 100]
-     ["window-size"  5 100]
-     ["window-size"  5 100]
-     ["window-size"  5 100]
-     ["window-size"  5 100]
-     ["window-size"  5 100]
-     ["window-size"  5 100]
-     ["window-size"  5 100]
-     ["window-size"  5 100]
-     ["window-size"  5 100]
-     ["window-size"  5 100]
-     ["window-size"  5 100]
-     ])
+     ["window-size"  5 100]])
 
   (setup [this m]
     (dosync
