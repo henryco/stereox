@@ -1,5 +1,6 @@
 (ns stereox.cv.block-matching
   (:import (clojure.lang Atom)
+           (org.bytedeco.opencv.opencv_cudastereo StereoSGM)
            (org.opencv.calib3d Calib3d StereoBM StereoMatcher StereoSGBM)
            (org.opencv.core Mat))
   (:gen-class))

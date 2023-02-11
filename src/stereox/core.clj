@@ -4,7 +4,11 @@
     [stereox.calibration.cli :as cbr]
     [clojure.string :as string]
     [clojure.tools.cli :as cli])
-  (:gen-class))
+  (:gen-class)
+  (:import (org.bytedeco.javacpp Loader)
+           (org.bytedeco.opencv opencv_java)))
+
+(Loader/load ^Class opencv_java)
 
 (def cli-options
   [["-h" "--help"]])

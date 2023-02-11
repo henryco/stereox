@@ -2,12 +2,9 @@
   (:require [clojure.walk :as cw]
             [stereox.utils.commons :as commons])
   (:import (clojure.lang Atom PersistentVector)
-           (nu.pattern OpenCV)
            (org.opencv.core Mat)
            (org.opencv.videoio VideoCapture VideoWriter Videoio))
   (:gen-class))
-
-(OpenCV/loadShared)
 
 (defrecord CameraProperties
   [^PersistentVector ids
