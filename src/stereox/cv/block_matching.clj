@@ -129,10 +129,17 @@
    ^Integer missing
    ^Integer ddepth])
 
+(defprotocol MatcherState
+  (-*matcher [_])
+  (-*params [_]))
+
 (deftype CpuStereoSGBM [^Atom *params
                         ^Atom *matcher]
-  BlockMatcher
+  MatcherState
+  (-*matcher [_] *matcher)
+  (-*params [_] *params)
 
+  BlockMatcher
   (options [_]
     [["min-disparity" 0 100]
      ["num-disparities" 1 100]
@@ -200,6 +207,47 @@
       (Calib3d/reprojectImageTo3D disparity _3dImage disparity-to-depth-map handle ddepth)
       _3dImage)))
 
+(deftype CudaStereoSGBM [^CpuStereoSGBM stereo]
+  BlockMatcher
+  (setup [_]
+    (let [*matcher (-*matcher stereo)
+          *params (-*params stereo)]
+      (reset! *matcher (StereoSGM/create
+                         (int (:min-disparity @*params))
+                         (* 16 (max 1 (int (:num-disparities @*params))))
+                         (max 0 (min 100 (to-odd (int (:block-size @*params)))))
+                         (min (- (int (:p2 @*params)) 1)
+                              (int (:p1 @*params)))
+                         (max (+ (int (:p1 @*params)) 1)
+                              (int (:p2 @*params)))
+                         (int (:max-disparity @*params))
+                         (int (:pre-filter-cap @*params))
+                         (min 16 (max 4 (int (:uniqueness @*params))))
+                         (min 201 (max 0 (int (:speckle-window-size @*params))))
+                         (max 0 (int (:speckle-range @*params)))
+                         (int (:mode @*params))))))
+
+  (options [_]
+    (options stereo))
+
+  (setup [_ map]
+    (setup stereo map))
+
+  (setup [_ k v]
+    (setup stereo k v))
+
+  (param [_ key]
+    (param stereo key))
+
+  (params [_]
+    (params stereo))
+
+  (disparity-map [_ images]
+    (disparity-map stereo images))
+
+  (project3d [_ disparity disparity-to-depth-map]
+    (project3d stereo disparity disparity-to-depth-map)))
+
 (defn create-cpu-stereo-sgbm
   ([^StereoSGBMProp props]
    (let [matcher (->CpuStereoSGBM (atom (map->StereoSGBMProp props))
@@ -207,6 +255,30 @@
      (setup matcher)
      matcher))
   ([] (create-cpu-stereo-sgbm
+        (map->StereoSGBMProp
+          {:min-disparity       1
+           :num-disparities     1
+           :block-size          3
+           :p1                  216
+           :p2                  284
+           :max-disparity       1
+           :pre-filter-cap      1
+           :uniqueness          10
+           :speckle-window-size 100
+           :speckle-range       32
+           :mode                0
+           :missing             0
+           :ddepth              -1
+           }))))
+
+(defn create-cuda-stereo-sgbm
+  ([^StereoSGBMProp props]
+   (let [matcher (->CudaStereoSGBM
+                   (->CpuStereoSGBM (atom (map->StereoSGBMProp props))
+                                    (atom nil)))]
+     (setup matcher)
+     matcher))
+  ([] (create-cuda-stereo-sgbm
         (map->StereoSGBMProp
           {:min-disparity       1
            :num-disparities     1
@@ -232,6 +304,6 @@
   (case key
     :cpu-bm (create-cpu-stereo-bm)
     :cpu-sgbm (create-cpu-stereo-sgbm)
-    :cuda-sgbm (throw (Exception. "Not implemented yet"))
+    :cuda-sgbm (create-cuda-stereo-sgbm)
     (throw (Exception. (str "Unknown matcher name: " key)))
     ))
