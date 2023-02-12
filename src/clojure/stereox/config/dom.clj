@@ -22,7 +22,7 @@
 (defn slider [{:keys [id min max value update-fn]}]
   {:fx/type  :h-box
    :spacing  5
-   :children [{:fx/type :region :min-width 1 :min-height 1}
+   :children [{:fx/type :region :min-width 10 :min-height 1}
               {:fx/type  :v-box
                :spacing  5
                :children [{:fx/type :label
@@ -30,14 +30,18 @@
                           {:fx/type  :h-box
                            :spacing  10
                            :children [{:fx/type          :slider
-                                       :min-width        240
+                                       :min-width        200
                                        :min              min
                                        :max              max
                                        :value            value
-                                       :on-value-changed update-fn
-                                       }
-                                      {:fx/type :label
-                                       :text    (str value)}]
+                                       :on-value-changed update-fn}
+                                      {:fx/type         :text-field
+                                       :text            (str value)
+                                       :max-width       50
+                                       :on-text-changed #(let [numb (try (Integer/parseInt %)
+                                                                         (catch Exception _ nil))]
+                                                           (if (some? numb)
+                                                             (update-fn numb)))}]
                            }]}
               ]}
   )
@@ -96,6 +100,7 @@
                                            {:fx/type v-separator}
                                            {:fx/type camera-parameters
                                             :camera  (-> state :controls :camera)}
+                                           {:fx/type v-separator}
                                            {:fx/type v-separator}]}
                  }]
    })
