@@ -201,7 +201,7 @@
      (max 0 (int (:uniqueness @*params)))
      (max 0 (int (:speckle-window-size @*params)))
      (max 0 (int (:speckle-range @*params)))
-     (int (:mode @*params))])
+     (max 0 (min 3 (int (:mode @*params))))])
 
   (setup [this]
     (let [vals (iter/->Iterator (values this))]
