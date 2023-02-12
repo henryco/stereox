@@ -116,6 +116,9 @@
   ; TODO
   )
 
+(defn- clamp [$min$ $max$ value]
+  (min $max$ (max $min$ value)))
+
 (defn- initialize-logic [{:as args}]
   (reset! *logic (logic/configure args)))
 
