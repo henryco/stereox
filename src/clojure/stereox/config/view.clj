@@ -4,10 +4,10 @@
     [stereox.utils.commons :as commons]
     [stereox.utils.guifx :as gfx])
   (:gen-class :main true)
-  (:import (java.io ByteArrayInputStream)
-           (javafx.scene.image Image)
+  (:import (javafx.scene.image Image)
            (org.bytedeco.javacv JavaFXFrameConverter OpenCVFrameConverter$ToOrgOpenCvCoreMat)
-           (org.opencv.core Mat)))
+           (org.opencv.core CvType Mat)
+           (org.opencv.imgproc Imgproc)))
 
 (def ^:private *logic
   "Logic"
@@ -72,18 +72,17 @@
   (swap! *state assoc :width v)
   (on-win-change))
 
-(defn- matrix-to-image [^Mat matrix]
-  (-> (commons/image-mat-to-bytes matrix)
-      (ByteArrayInputStream.)
-      (Image.)))
-
-;(defn- matrix-to-image
-;  {:tag    Image
-;   :static true}
-;  [^Mat matrix]
-;  (let [conv_1 (new JavaFXFrameConverter)
-;        conv_2 (new OpenCVFrameConverter$ToOrgOpenCvCoreMat)]
-;    (->> matrix (.convert conv_2) (.convert conv_1))))
+(defn- matrix-to-image
+  {:tag    Image
+   :static true}
+  [^Mat matrix]
+  (let [conv_1 (new JavaFXFrameConverter)
+        conv_2 (new OpenCVFrameConverter$ToOrgOpenCvCoreMat)
+        mat (new Mat)]
+    (.convertTo matrix mat CvType/CV_8U)
+    (->> (commons/img-copy mat Imgproc/COLOR_GRAY2BGR)
+         (.convert conv_2)
+         (.convert conv_1))))
 
 (defn- main-cb-loop []
   (let [frame (logic/render-frame @*logic)
