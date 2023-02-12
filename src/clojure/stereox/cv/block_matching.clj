@@ -5,6 +5,7 @@
            (org.bytedeco.opencv.opencv_cudastereo StereoSGM)
            (org.bytedeco.opencv.opencv_calib3d StereoSGBM StereoBM StereoMatcher)
            (org.bytedeco.opencv.global opencv_calib3d))
+  (:require [stereox.utils.iterators :as iter])
   (:gen-class))
 
 (defn- core-to-cv
@@ -39,6 +40,9 @@
 
 (defprotocol BlockMatcher
   "Block matcher algorithm interface"
+
+  (values [_]
+    "Returns vector or sequence of fitted parameter values")
 
   (options [_]
     "Returns tweakable options map {:key :max-val}")
@@ -80,9 +84,13 @@
      ["ddepth" -1 -1]
      ])
 
-  (setup [_]
-    (reset! *matcher (StereoBM/create (* 16 (int (:num-disparities @*params)))
-                                      (max 5 (to-odd (int (:block-size @*params)))))))
+  (values [_]
+    [(* 16 (int (:num-disparities @*params)))
+     (max 5 (to-odd (int (:block-size @*params))))])
+
+  (setup [this]
+    (let [[a b] (values this)]
+      (reset! *matcher (StereoBM/create a b))))
 
   (setup [this m]
     (dosync
@@ -155,14 +163,12 @@
    ^Integer ddepth])
 
 (defprotocol MatcherState
-  (-*matcher [_])
-  (-*params [_]))
+  (-*matcher [_]))
 
 (deftype CpuStereoSGBM [^Atom *params
                         ^Atom *matcher]
   MatcherState
   (-*matcher [_] *matcher)
-  (-*params [_] *params)
 
   BlockMatcher
   (options [_]
@@ -182,21 +188,35 @@
      ["ddepth" -1 -1]
      ])
 
-  (setup [_]
-    (reset! *matcher (StereoSGBM/create
-                       (int (:min-disparity @*params))
-                       (* 16 (max 1 (int (:num-disparities @*params))))
-                       (max 0 (min 100 (to-odd (int (:block-size @*params)))))
-                       (min (- (int (:p2 @*params)) 1)
-                            (int (:p1 @*params)))
-                       (max (+ (int (:p1 @*params)) 1)
-                            (int (:p2 @*params)))
-                       (int (:max-disparity @*params))
-                       (int (:pre-filter-cap @*params))
-                       (min 16 (max 4 (int (:uniqueness @*params))))
-                       (min 201 (max 0 (int (:speckle-window-size @*params))))
-                       (max 0 (int (:speckle-range @*params)))
-                       (int (:mode @*params)))))
+  (values [_]
+    [(int (:min-disparity @*params))
+     (* 16 (max 1 (int (:num-disparities @*params))))
+     (max 0 (min 1000 (to-odd (int (:block-size @*params)))))
+     (min (- (int (:p2 @*params)) 1)
+          (int (:p1 @*params)))
+     (max (+ (int (:p1 @*params)) 1)
+          (int (:p2 @*params)))
+     (int (:max-disparity @*params))
+     (int (:pre-filter-cap @*params))
+     (min 16 (max 4 (int (:uniqueness @*params))))
+     (min 201 (max 0 (int (:speckle-window-size @*params))))
+     (max 0 (int (:speckle-range @*params)))
+     (int (:mode @*params))])
+
+  (setup [this]
+    (let [vals (iter/->Iterator (values this))]
+      (reset! *matcher (StereoSGBM/create
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)))))
 
   (setup [this m]
     (dosync
@@ -241,23 +261,25 @@
 
 (deftype CudaStereoSGBM [^CpuStereoSGBM stereo]
   BlockMatcher
-  (setup [_]
+
+  (values [_]
+    (values stereo))
+
+  (setup [this]
     (let [*matcher (-*matcher stereo)
-          *params (-*params stereo)]
+          vals (iter/->Iterator (values this))]
       (reset! *matcher (StereoSGM/create
-                         (int (:min-disparity @*params))
-                         (* 16 (max 1 (int (:num-disparities @*params))))
-                         (max 0 (min 100 (to-odd (int (:block-size @*params)))))
-                         (min (- (int (:p2 @*params)) 1)
-                              (int (:p1 @*params)))
-                         (max (+ (int (:p1 @*params)) 1)
-                              (int (:p2 @*params)))
-                         (int (:max-disparity @*params))
-                         (int (:pre-filter-cap @*params))
-                         (min 16 (max 4 (int (:uniqueness @*params))))
-                         (min 201 (max 0 (int (:speckle-window-size @*params))))
-                         (max 0 (int (:speckle-range @*params)))
-                         (int (:mode @*params))))))
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)
+                         (iter/>>> vals)))))
 
   (options [_]
     (options stereo))
