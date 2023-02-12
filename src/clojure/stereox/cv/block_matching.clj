@@ -79,7 +79,7 @@
 
   (options [_]
     [["num-disparities" 0 100]
-     ["block-size" 5 100]
+     ["block-size" 5 500]
      ["missing" 0 1]
      ["ddepth" -1 -1]
      ])
@@ -174,14 +174,14 @@
   (options [_]
     [["min-disparity" 0 100]
      ["num-disparities" 1 100]
-     ["block-size" 1 100]
+     ["block-size" 1 500]
      ["p1" 0 5000]
      ["p2" 1 5000]
      ["max-disparity" 0 1000]
-     ["pre-filter-cap" 0 100]
-     ["uniqueness" 4 16]
-     ["speckle-window-size" 0 201]
-     ["speckle-range" 0 100]
+     ["pre-filter-cap" 0 1000]
+     ["uniqueness" 0 100]
+     ["speckle-window-size" 0 500]
+     ["speckle-range" 0 500]
      ["mode" 0 3]
      ; MODE_SGBM = 0 MODE_HH = 1 MODE_SGBM_3WAY = 2 MODE_HH4 = 3
      ["missing" 0 1]
@@ -189,17 +189,17 @@
      ])
 
   (values [_]
-    [(int (:min-disparity @*params))
+    [(max 0 (int (:min-disparity @*params)))
      (* 16 (max 1 (int (:num-disparities @*params))))
-     (max 0 (min 1000 (to-odd (int (:block-size @*params)))))
+     (max 0 (to-odd (int (:block-size @*params))))
      (min (- (int (:p2 @*params)) 1)
           (int (:p1 @*params)))
      (max (+ (int (:p1 @*params)) 1)
           (int (:p2 @*params)))
-     (int (:max-disparity @*params))
-     (int (:pre-filter-cap @*params))
-     (min 16 (max 4 (int (:uniqueness @*params))))
-     (min 201 (max 0 (int (:speckle-window-size @*params))))
+     (max 0 (int (:max-disparity @*params)))
+     (max 0 (int (:pre-filter-cap @*params)))
+     (max 0 (int (:uniqueness @*params)))
+     (max 0 (int (:speckle-window-size @*params)))
      (max 0 (int (:speckle-range @*params)))
      (int (:mode @*params))])
 
@@ -262,9 +262,6 @@
 (deftype CudaStereoSGBM [^CpuStereoSGBM stereo]
   BlockMatcher
 
-  (values [_]
-    (values stereo))
-
   (setup [this]
     (let [*matcher (-*matcher stereo)
           vals (iter/->Iterator (values this))]
@@ -280,6 +277,9 @@
                          (iter/>>> vals)
                          (iter/>>> vals)
                          (iter/>>> vals)))))
+
+  (values [_]
+    (values stereo))
 
   (options [_]
     (options stereo))
