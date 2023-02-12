@@ -38,6 +38,9 @@
     (+ 1 v)
     v))
 
+(defprotocol MatcherState
+  (-*matcher [_]))
+
 (defprotocol BlockMatcher
   "Block matcher algorithm interface"
 
@@ -75,8 +78,10 @@
 
 (deftype CpuStereoBM [^Atom *params
                       ^Atom *matcher]
-  BlockMatcher
+  MatcherState
+  (-*matcher [_] *matcher)
 
+  BlockMatcher
   (options [_]
     [["num-disparities" 0 100]
      ["block-size" 5 500]
@@ -133,20 +138,6 @@
                                          (int ddepth))
       (cv-to-core _3dImage))))
 
-(defn create-cpu-stereo-bm
-  ([^StereoBMProp props]
-   (let [matcher (->CpuStereoBM (atom (map->StereoBMProp props))
-                                (atom nil))]
-     (setup matcher)
-     matcher))
-  ([] (create-cpu-stereo-bm
-        (map->StereoBMProp
-          {:num-disparities 1
-           :block-size      21
-           :missing         0
-           :ddepth          -1
-           }))))
-
 (defrecord StereoSGBMProp
   [^Integer min-disparity
    ^Integer num-disparities
@@ -161,9 +152,6 @@
    ^Integer mode
    ^Integer missing
    ^Integer ddepth])
-
-(defprotocol MatcherState
-  (-*matcher [_]))
 
 (deftype CpuStereoSGBM [^Atom *params
                         ^Atom *matcher]
@@ -259,6 +247,38 @@
                                          (int ddepth))
       (cv-to-core _3dImage))))
 
+(deftype CudaStereoBM [^CpuStereoBM stereo]
+  BlockMatcher
+
+  (setup [this]
+    (let [[a b] (values this)]
+      (reset! (-*matcher stereo)
+              (org.bytedeco.opencv.opencv_cudastereo.StereoBM/create a b))))
+
+  (values [_]
+    (values stereo))
+
+  (options [_]
+    (options stereo))
+
+  (setup [_ map]
+    (setup stereo map))
+
+  (setup [_ k v]
+    (setup stereo k v))
+
+  (param [_ key]
+    (param stereo key))
+
+  (params [_]
+    (params stereo))
+
+  (disparity-map [_ images]
+    (disparity-map stereo images))
+
+  (project3d [_ disparity disparity-to-depth-map]
+    (project3d stereo disparity disparity-to-depth-map)))
+
 (deftype CudaStereoSGBM [^CpuStereoSGBM stereo]
   BlockMatcher
 
@@ -302,7 +322,42 @@
   (project3d [_ disparity disparity-to-depth-map]
     (project3d stereo disparity disparity-to-depth-map)))
 
+(defn create-cpu-stereo-bm
+  {:static true
+   :tag    BlockMatcher}
+  ([^StereoBMProp props]
+   (let [matcher (->CpuStereoBM (atom (map->StereoBMProp props))
+                                (atom nil))]
+     (setup matcher)
+     matcher))
+  ([] (create-cpu-stereo-bm
+        (map->StereoBMProp
+          {:num-disparities 1
+           :block-size      21
+           :missing         0
+           :ddepth          -1
+           }))))
+
+(defn create-cuda-stereo-bm
+  {:static true
+   :tag    BlockMatcher}
+  ([^StereoBMProp props]
+   (let [matcher (->CudaStereoBM
+                   (->CpuStereoBM (atom (map->StereoBMProp props))
+                                  (atom nil)))]
+     (setup matcher)
+     matcher))
+  ([] (create-cuda-stereo-bm
+        (map->StereoBMProp
+          {:num-disparities 1
+           :block-size      21
+           :missing         0
+           :ddepth          -1
+           }))))
+
 (defn create-cpu-stereo-sgbm
+  {:static true
+   :tag    BlockMatcher}
   ([^StereoSGBMProp props]
    (let [matcher (->CpuStereoSGBM (atom (map->StereoSGBMProp props))
                                   (atom nil))]
@@ -326,6 +381,8 @@
            }))))
 
 (defn create-cuda-stereo-sgbm
+  {:static true
+   :tag    BlockMatcher}
   ([^StereoSGBMProp props]
    (let [matcher (->CudaStereoSGBM
                    (->CpuStereoSGBM (atom (map->StereoSGBMProp props))
@@ -349,15 +406,10 @@
            :ddepth              -1
            }))))
 
-(defn create-cuda-stereo-bm []
-  (throw (Exception. "TODO"))
-  ; TODO
-  )
-
 (defn create-stereo-matcher
-  "Create stereo matcher instance.
+  "Create BlockMatcher instance.
   key: [:cpu-bm|:cpu-sgbm|:gpu-sgbm]"
-  {:tag    StereoMatcher
+  {:tag    BlockMatcher
    :static true}
   [key]
   (case key
