@@ -41,7 +41,7 @@
                                        :on-text-changed #(let [numb (try (Integer/parseInt %)
                                                                          (catch Exception _ nil))]
                                                            (if (some? numb)
-                                                             (update-fn (clamp min max numb))))}]
+                                                             (update-fn (commons/clamp min max numb))))}]
                            }]}
               ]}
   )

@@ -26,6 +26,9 @@
 (defprotocol IStereoCamera
   "Interface for Stereo pair camera"
 
+  (unify [_]
+    "Unify stereo camera properties")
+
   (re-init [_ ^CameraProperties properties]
     "Reinitialize stereo camera with properties")
 
@@ -131,27 +134,74 @@
       nil)                                                  ; GRABBED:  FALSE -> NIL
     ))
 
+(def C_PROPS
+  {:buffer     Videoio/CAP_PROP_BUFFERSIZE
+   :auto-exp   Videoio/CAP_PROP_AUTO_EXPOSURE
+   :exposure   Videoio/CAP_PROP_EXPOSURE
+   :brightness Videoio/CAP_PROP_BRIGHTNESS
+   :gamma      Videoio/CAP_PROP_GAMMA
+   :gain       Videoio/CAP_PROP_GAIN
+   :fps        Videoio/CAP_PROP_FPS})
+
 (defrecord StereoCamera [^Atom *io ^Atom *props]
   IStereoCamera
 
   (options [_]
-    [["gain" -1 1000]
-     ["gamma" -1 1000]
-     ["brightness" -1 1000]
+    [["gain" 0 1000]
+     ["gamma" 0 1000]
+     ["brightness" 0 1000]
      ["exposure" -1 1000]
-     ["buffer" -1 10]
-     ["fps" -1 60]
+     ["buffer" 1 10]
+     ["fps" 0 60]
      ])
+
+  (unify [this]
+    (let [[l r] (:capture @*io)]
+      (run! (fn [[k v]]
+              (let [lv (.get ^VideoCapture l v)
+                    rv (.get ^VideoCapture r v)]
+                (if (not= lv rv)
+                  (println "diff: [" k "] L: " lv " R: " rv)
+                  (setup this k lv))))
+            C_PROPS)))
 
   (setup [this m]
     (re-init this (into {} (map (fn [[k v]]
                                   [k (if (>= v 0) v nil)])
                                 (merge @*props m)))))
 
-  (setup [this k v]
-    (let [kk (if (keyword? k) k (keyword k))
-          vv (if (>= v 0) v nil)]
-      (re-init this (assoc @*props kk vv))))
+  (setup [_ k v]
+    (let [vc (:capture @*io)
+          kk (if (keyword? k) k (keyword k))
+          vv (if (>= v 0) v nil)
+          pp (assoc @*props kk vv)]
+      (case kk
+        :auto-exp (if (some? vv)
+                    (run! #(.set % Videoio/CAP_PROP_AUTO_EXPOSURE vv)
+                          vc))
+        :exposure (if (some? vv)
+                    (run! (fn [c]
+                            (.set c Videoio/CAP_PROP_AUTO_EXPOSURE 1)
+                            (.set c Videoio/CAP_PROP_EXPOSURE vv))
+                          vc)
+                    (run! #(.set % Videoio/CAP_PROP_AUTO_EXPOSURE 3)
+                          vc))
+        :buffer (if (some? vv)
+                  (run! #(.set % Videoio/CAP_PROP_BUFFERSIZE vv)
+                        vc))
+        :brightness (if (some? vv)
+                      (run! #(.set % Videoio/CAP_PROP_BRIGHTNESS vv)
+                            vc))
+        :gamma (if (some? vv)
+                 (run! #(.set % Videoio/CAP_PROP_GAMMA vv)
+                       vc))
+        :gain (if (some? vv)
+                (run! #(.set % Videoio/CAP_PROP_GAIN vv)
+                      vc))
+        :fps (if (some? vv)
+               (run! #(.set % Videoio/CAP_PROP_FPS vv)
+                     vc)))
+      (reset! *props pp)))
 
   (re-init [this properties]
     (dosync
@@ -159,7 +209,8 @@
       (reset! *io (cw/postwalk
                     #(if (record? %) (into {} %) %)
                     (init-camera properties)))
-      (reset! *props properties)))
+      (reset! *props properties)
+      (unify this)))
 
   (params [_]
     (map->CameraProperties @*props))
@@ -176,9 +227,11 @@
    :tag    StereoCamera}
   [^CameraProperties properties]
   ; basically just (StereoCamera. (atom (into {} io)), but deep copy
-  (->StereoCamera
-    (atom
-      (cw/postwalk
-        #(if (record? %) (into {} %) %)
-        (init-camera properties)))
-    (atom properties)))
+  (let [camera (->StereoCamera
+             (atom
+               (cw/postwalk
+                 #(if (record? %) (into {} %) %)
+                 (init-camera properties)))
+             (atom properties))]
+    (unify camera)
+    camera))
