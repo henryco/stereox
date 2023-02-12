@@ -88,10 +88,18 @@
           rectified (nrm/rectify (:normalizer @*state)
                                  captured)
           disparity (bm/disparity-map (:block-matcher @*state)
-                                      (to-gray rectified))]
+                                      (to-gray rectified))
+          ;_3d (bm/project3d (:block-matcher @*state)
+          ;                  disparity
+          ;                  (:disparity_to_depth_matrix (:calibration @*state)))
+          ]
       (->Frame captured
                rectified
-               disparity)))
+               disparity))
+      ;(->Frame captured
+      ;         rectified
+      ;         _3d))
+    )
 
   (save-settings [_]
     ; TODO
