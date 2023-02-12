@@ -48,7 +48,7 @@
     "Returns vector or sequence of fitted parameter values")
 
   (options [_]
-    "Returns tweakable options map {:key :max-val}")
+    "Returns tweakable options vector [[id min max]...]")
 
   (setup [_] [_ map] [_ k v]
     "Update algorithm parameter (key value)")

@@ -26,8 +26,15 @@
 (defprotocol IStereoCamera
   "Interface for Stereo pair camera"
 
-  (re-init [this ^CameraProperties properties]
+  (re-init [_ ^CameraProperties properties]
     "Reinitialize stereo camera with properties")
+
+  (setup [_ map] [_ k v]
+    "Update stereo camera parameter (key value) or map")
+
+  (options [_]
+    "Returns:
+      Tweakable options vector [[id min max]...]")
 
   (params [_]
     "Returns:
@@ -126,6 +133,25 @@
 
 (defrecord StereoCamera [^Atom *io ^Atom *props]
   IStereoCamera
+
+  (options [_]
+    [["gain" -1 1000]
+     ["gamma" -1 1000]
+     ["brightness" -1 1000]
+     ["exposure" -1 1000]
+     ["buffer" -1 10]
+     ["fps" -1 60]
+     ])
+
+  (setup [this m]
+    (re-init this (into {} (map (fn [[k v]]
+                                  [k (if (>= v 0) v nil)])
+                                (merge @*props m)))))
+
+  (setup [this k v]
+    (let [kk (if (keyword? k) k (keyword k))
+          vv (if (>= v 0) v nil)]
+      (re-init this (assoc @*props kk vv))))
 
   (re-init [this properties]
     (dosync
