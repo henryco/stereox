@@ -104,6 +104,8 @@
   (reset! *logic (logic/configure args)))
 
 (defn- initialize-state [{:as args}]
+  (swap! *state assoc :title (str (:title @*state)
+                                  " [" (:matcher args) "]"))
   (swap! *state assoc-in [:controls :matcher]
          (-> (map (fn [[k min max]]
                     {:val (get (logic/matcher-params @*logic)

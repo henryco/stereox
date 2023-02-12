@@ -1,9 +1,27 @@
 (ns stereox.cv.block-matching
   (:import (clojure.lang Atom)
+           (org.bytedeco.javacv OpenCVFrameConverter$ToMat OpenCVFrameConverter$ToOrgOpenCvCoreMat)
+           (org.bytedeco.opencv.opencv_core Mat)
            (org.bytedeco.opencv.opencv_cudastereo StereoSGM)
-           (org.opencv.calib3d Calib3d StereoBM StereoMatcher StereoSGBM)
-           (org.opencv.core Mat))
+           (org.bytedeco.opencv.opencv_calib3d StereoSGBM StereoBM StereoMatcher)
+           (org.bytedeco.opencv.global opencv_calib3d))
   (:gen-class))
+
+(defn- core-to-cv
+  {:static true
+   :tag    Mat}
+  [^org.opencv.core.Mat coreMat]
+  (let [conv_1 (new OpenCVFrameConverter$ToMat)
+        conv_2 (new OpenCVFrameConverter$ToOrgOpenCvCoreMat)]
+    (->> coreMat (.convert conv_2) (.convert conv_1))))
+
+(defn- cv-to-core
+  {:static true
+   :tag    org.opencv.core.Mat}
+  [^Mat cvMat]
+  (let [conv_1 (new OpenCVFrameConverter$ToMat)
+        conv_2 (new OpenCVFrameConverter$ToOrgOpenCvCoreMat)]
+    (->> cvMat (.convert conv_1) (.convert conv_2))))
 
 (defn- ord
   "Returns original value if not nil,
@@ -90,15 +108,22 @@
 
   (disparity-map [_ [left right]]
     (let [disparity (Mat.)]
-      (.compute ^StereoBM @*matcher left right disparity)
-      disparity))
+      (.compute ^StereoMatcher @*matcher
+                (core-to-cv left)
+                (core-to-cv right)
+                disparity)
+      (cv-to-core disparity)))
 
   (project3d [_ disparity disparity-to-depth-map]
     (let [_3dImage (Mat.)
           handle (-> @*params :missing (> 0))
           ddepth (-> @*params :ddepth (ord -1))]
-      (Calib3d/reprojectImageTo3D disparity _3dImage disparity-to-depth-map handle ddepth)
-      _3dImage)))
+      (opencv_calib3d/reprojectImageTo3D (core-to-cv disparity)
+                                         _3dImage
+                                         (core-to-cv disparity-to-depth-map)
+                                         (boolean handle)
+                                         (int ddepth))
+      (cv-to-core _3dImage))))
 
 (defn create-cpu-stereo-bm
   ([^StereoBMProp props]
@@ -197,15 +222,22 @@
 
   (disparity-map [_ [left right]]
     (let [disparity (Mat.)]
-      (.compute ^StereoSGBM @*matcher left right disparity)
-      disparity))
+      (.compute ^StereoMatcher @*matcher
+                (core-to-cv left)
+                (core-to-cv right)
+                disparity)
+      (cv-to-core disparity)))
 
   (project3d [_ disparity disparity-to-depth-map]
     (let [_3dImage (Mat.)
           handle (-> @*params :missing (> 0))
           ddepth (-> @*params :ddepth (ord -1))]
-      (Calib3d/reprojectImageTo3D disparity _3dImage disparity-to-depth-map handle ddepth)
-      _3dImage)))
+      (opencv_calib3d/reprojectImageTo3D (core-to-cv disparity)
+                                         _3dImage
+                                         (core-to-cv disparity-to-depth-map)
+                                         (boolean handle)
+                                         (int ddepth))
+      (cv-to-core _3dImage))))
 
 (deftype CudaStereoSGBM [^CpuStereoSGBM stereo]
   BlockMatcher
@@ -295,6 +327,11 @@
            :ddepth              -1
            }))))
 
+(defn create-cuda-stereo-bm []
+  (throw (Exception. "TODO"))
+  ; TODO
+  )
+
 (defn create-stereo-matcher
   "Create stereo matcher instance.
   key: [:cpu-bm|:cpu-sgbm|:gpu-sgbm]"
@@ -303,6 +340,7 @@
   [key]
   (case key
     :cpu-bm (create-cpu-stereo-bm)
+    :cuda-bm (create-cuda-stereo-bm)
     :cpu-sgbm (create-cpu-stereo-sgbm)
     :cuda-sgbm (create-cuda-stereo-sgbm)
     (throw (Exception. (str "Unknown matcher name: " key)))
