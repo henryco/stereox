@@ -20,8 +20,8 @@
    })
 
 (defn slider [{:keys [id min max value update-fn]}]
-  {:fx/type :h-box
-   :spacing 5
+  {:fx/type  :h-box
+   :spacing  5
    :children [{:fx/type :region :min-width 1 :min-height 1}
               {:fx/type  :v-box
                :spacing  5
@@ -58,12 +58,25 @@
    })
 
 (defn camera-parameters [{:keys [camera]}]
-  ; TODO
   {:fx/type    :v-box
    :style      {:-fx-background-color :white}
    :min-height 10
-   :spacing    10
+   :spacing    20
+   :children   (map (fn [{:keys [id min max val]}]
+                      {:fx/type   slider
+                       :value     (if (some? val) val -1)
+                       :id        id
+                       :max       max
+                       :min       min
+                       :update-fn #(on-camera-update id (int %))})
+                    camera)
    })
+
+(defn v-separator [_]
+  {:fx/type    :v-box
+   :style      {:-fx-background-color :white}
+   :min-height 15
+   :spacing    20})
 
 (defn render-parameters [state]
   {:fx/type    :v-box
@@ -77,10 +90,13 @@
                                :style     {:-fx-background-color :white}
                                :min-width (-> state :panel :width)
                                :max-width (-> state :panel :width)
-                               :children  [{:fx/type matcher-parameters
+                               :children  [{:fx/type v-separator}
+                                           {:fx/type matcher-parameters
                                             :matcher (-> state :controls :matcher)}
+                                           {:fx/type v-separator}
                                            {:fx/type camera-parameters
-                                            :camera  (-> state :controls :camera)}]}
+                                            :camera  (-> state :controls :camera)}
+                                           {:fx/type v-separator}]}
                  }]
    })
 
@@ -92,14 +108,14 @@
    :on-close-request  shutdown
    :on-height-changed on-win-height-change
    :on-width-changed  on-win-width-change
-   :scene             {:fx/type :scene
+   :scene             {:fx/type           :scene
                        :on-height-changed on-scene-height-change
                        :on-width-changed  on-scene-width-change
-                       :root    {:fx/type :border-pane
-                                 :style   {:-fx-background-color :darkgray
-                                           :-fx-alignment        :center}
-                                 :right   (merge state {:fx/type render-parameters})
-                                 :center  (merge state {:fx/type render-image})
-                                 }
+                       :root              {:fx/type :border-pane
+                                           :style   {:-fx-background-color :darkgray
+                                                     :-fx-alignment        :center}
+                                           :right   (merge state {:fx/type render-parameters})
+                                           :center  (merge state {:fx/type render-image})
+                                           }
                        }
    })

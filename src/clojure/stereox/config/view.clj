@@ -108,6 +108,14 @@
              (doall)
              (vec))))
 
+(defn- update-camera-params [k v]
+  ; TODO
+  )
+
+(defn- on-camera-update [k v]
+  ; TODO
+  )
+
 (defn- initialize-logic [{:as args}]
   (reset! *logic (logic/configure args)))
 
@@ -127,6 +135,16 @@
                      :max max
                      :id  k})
                   (logic/matcher-options @*logic))
+             (doall)
+             (vec)))
+  (swap! *state assoc-in [:controls :camera]
+         (-> (map (fn [[k min max]]
+                    {:val (get (logic/camera-params @*logic)
+                               (keyword k))
+                     :min min
+                     :max max
+                     :id  k})
+                  (logic/camera-options @*logic))
              (doall)
              (vec)))
   (swap! *state assoc-in [:camera :viewport]
