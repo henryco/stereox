@@ -408,7 +408,7 @@
 
 (defn create-stereo-matcher
   "Create BlockMatcher instance.
-  key: [:cpu-bm|:cpu-sgbm|:gpu-sgbm]"
+  key: [:cpu-bm|:cpu-sgbm|:cuda-bm|:cuda-sgbm]"
   {:tag    BlockMatcher
    :static true}
   [key]
