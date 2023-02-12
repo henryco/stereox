@@ -6,6 +6,7 @@
   (:gen-class :main true)
   (:import (java.io ByteArrayInputStream)
            (javafx.scene.image Image)
+           (org.bytedeco.javacv JavaFXFrameConverter OpenCVFrameConverter$ToOrgOpenCvCoreMat)
            (org.opencv.core Mat)))
 
 (def ^:private *logic
@@ -75,6 +76,14 @@
   (-> (commons/image-mat-to-bytes matrix)
       (ByteArrayInputStream.)
       (Image.)))
+
+;(defn- matrix-to-image
+;  {:tag    Image
+;   :static true}
+;  [^Mat matrix]
+;  (let [conv_1 (new JavaFXFrameConverter)
+;        conv_2 (new OpenCVFrameConverter$ToOrgOpenCvCoreMat)]
+;    (->> matrix (.convert conv_2) (.convert conv_1))))
 
 (defn- main-cb-loop []
   (let [frame (logic/render-frame @*logic)

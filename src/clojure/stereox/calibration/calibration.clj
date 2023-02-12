@@ -8,11 +8,12 @@
             [stereox.utils.timer :as timer]
             [taoensso.timbre :as log])
   (:import (clojure.lang PersistentVector)
-           (java.io ByteArrayInputStream File)
+           (java.io File)
            (java.util ArrayList Collection List)
            (javafx.animation AnimationTimer)
            (javafx.application Platform)
            (javafx.scene.image Image)
+           (org.bytedeco.javacv JavaFXFrameConverter OpenCVFrameConverter$ToOrgOpenCvCoreMat)
            (org.opencv.calib3d Calib3d)
            (org.opencv.core CvType Mat MatOfFloat4 MatOfPoint2f Rect Size TermCriteria)
            (org.opencv.imgproc Imgproc)
@@ -85,14 +86,20 @@
                   :number   1 :image []}
          }))
 
+(defn- matrix-to-image
+  {:tag    Image
+   :static true}
+  [^Mat matrix]
+  (let [conv_1 (new JavaFXFrameConverter)
+        conv_2 (new OpenCVFrameConverter$ToOrgOpenCvCoreMat)]
+    (->> matrix (.convert conv_2) (.convert conv_1))))
+
 (defn image-adapt [matrices]
   (if (some? matrices)
     (map #(deref %)
          (map #(future
-                 (-> (commons/image-mat-to-bytes %)
-                     (ByteArrayInputStream.)
-                     (Image.))
-                 ) matrices))
+                 (matrix-to-image %))
+              matrices))
     nil))
 
 (defn terminate-graphics []
