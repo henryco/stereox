@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Leiningen: org.bytedeco/leptonica:1.82.0-1.5.8:linux-x86_64">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/bytedeco/leptonica/1.82.0-1.5.8/leptonica-1.82.0-1.5.8-linux-x86_64.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
