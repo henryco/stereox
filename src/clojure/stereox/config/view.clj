@@ -149,7 +149,8 @@
              (doall)
              (vec)))
   (.unify ^IStereoCamera (:camera (logic/state @*logic)))
-  (camera-state-update))
+  (if (not= v -1)
+    (camera-state-update)))
 
 (defn- initialize-logic [{:as args}]
   (reset! *logic (logic/configure args)))

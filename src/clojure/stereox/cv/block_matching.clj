@@ -1,10 +1,10 @@
 (ns stereox.cv.block-matching
   (:import (clojure.lang Atom)
            (org.bytedeco.javacv OpenCVFrameConverter$ToMat OpenCVFrameConverter$ToOrgOpenCvCoreMat)
-           (org.bytedeco.opencv.opencv_core Mat)
+           (org.bytedeco.opencv.opencv_core GpuMat Mat)
            (org.bytedeco.opencv.opencv_cudastereo StereoSGM)
            (org.bytedeco.opencv.opencv_calib3d StereoSGBM StereoBM StereoMatcher)
-           (org.bytedeco.opencv.global opencv_calib3d))
+           (org.bytedeco.opencv.global opencv_calib3d opencv_cudastereo))
   (:require [stereox.utils.iterators :as iter])
   (:gen-class))
 
@@ -37,9 +37,6 @@
          0)
     (+ 1 v)
     v))
-
-(defprotocol MatcherState
-  (-*matcher [_]))
 
 (defprotocol BlockMatcher
   "Block matcher algorithm interface"
@@ -78,9 +75,6 @@
 
 (deftype CpuStereoBM [^Atom *params
                       ^Atom *matcher]
-  MatcherState
-  (-*matcher [_] *matcher)
-
   BlockMatcher
   (options [_]
     [["num-disparities" 0 100]
@@ -155,9 +149,6 @@
 
 (deftype CpuStereoSGBM [^Atom *params
                         ^Atom *matcher]
-  MatcherState
-  (-*matcher [_] *matcher)
-
   BlockMatcher
   (options [_]
     [["min-disparity" 0 100]
@@ -247,80 +238,173 @@
                                          (int ddepth))
       (cv-to-core _3dImage))))
 
-(deftype CudaStereoBM [^CpuStereoBM stereo]
+(deftype CudaStereoBM [^Atom *params
+                       ^Atom *matcher]
   BlockMatcher
+  (options [_]
+    [["num-disparities" 0 100]
+     ["block-size" 5 500]
+     ])
+
+  (values [_]
+    [(* 16 (int (:num-disparities @*params)))
+     (max 5 (to-odd (int (:block-size @*params))))])
 
   (setup [this]
     (let [[a b] (values this)]
-      (reset! (-*matcher stereo)
-              (org.bytedeco.opencv.opencv_cudastereo.StereoBM/create a b))))
+      (reset! *matcher (opencv_cudastereo/createStereoBM a b))))
 
-  (values [_]
-    (values stereo))
+  (setup [this m]
+    (dosync
+      (swap! *params
+             #(map (fn [[k v]]
+                     (assoc % k v))
+                   (seq m)))
+      (setup this)))
 
-  (options [_]
-    (options stereo))
-
-  (setup [_ map]
-    (setup stereo map))
-
-  (setup [_ k v]
-    (setup stereo k v))
+  (setup [this k v]
+    (let [kk (if (keyword? k) k (keyword k))]
+      (dosync
+        (swap! *params assoc kk v)
+        (setup this))))
 
   (param [_ key]
-    (param stereo key))
+    (if (keyword? key)
+      (get @*params key)
+      (get @*params (keyword key))))
 
   (params [_]
-    (params stereo))
+    (map->StereoBMProp @*params))
 
-  (disparity-map [_ images]
-    (disparity-map stereo images))
+  (disparity-map [_ [left right]]
+    (let [disp_cv_mat (Mat.)
+          left_cv_mat (core-to-cv left)
+          right_cv_mat (core-to-cv right)
+          disp_cuda_mat (GpuMat.)
+          left_cuda_mat (GpuMat.)
+          right_cuda_mat (GpuMat.)]
+      (.upload left_cuda_mat left_cv_mat)
+      (.upload right_cuda_mat right_cv_mat)
+      (.compute ^StereoMatcher @*matcher
+                left_cuda_mat
+                right_cuda_mat
+                disp_cuda_mat)
+      (.download disp_cuda_mat disp_cv_mat)
+      (cv-to-core disp_cv_mat)))
 
   (project3d [_ disparity disparity-to-depth-map]
-    (project3d stereo disparity disparity-to-depth-map)))
+    (let [disparity_cv (core-to-cv disparity)
+          disparity_cuda (GpuMat.)
+          image_3d_cv (Mat.)
+          image_3d_cuda (GpuMat.)
+          dtp_cv (core-to-cv disparity-to-depth-map)
+          dtp_cuda (GpuMat.)]
+      (.upload disparity_cuda disparity_cv)
+      (.upload dtp_cuda dtp_cv)
+      (opencv_cudastereo/reprojectImageTo3D disparity_cuda
+                                            image_3d_cuda
+                                            dtp_cuda)
+      (.download image_3d_cuda image_3d_cv)
+      (cv-to-core image_3d_cv)))
 
-(deftype CudaStereoSGBM [^CpuStereoSGBM stereo]
+  )
+
+(defrecord StereoSGMProp
+  [^Integer min-disparity
+   ^Integer num-disparities
+   ^Integer p1
+   ^Integer p2
+   ^Integer uniqueness
+   ^Integer mode])
+
+(deftype CudaStereoSGM [^Atom *params
+                        ^Atom *matcher]
   BlockMatcher
+  (options [_]
+    [["min-disparity" 0 256]
+     ["num-disparities" 0 2]
+     ["p1" 0 5000]
+     ["p2" 1 5000]
+     ["uniqueness" 0 100]
+     ["mode" 0 1]
+     ; MODE_HH = 1 MODE_HH4 = 3 : {0 1 1 3}
+     ])
+
+  (values [_]
+    [(max 0 (int (:min-disparity @*params)))
+     (get {0 64 1 128 2 256} (int (:num-disparities @*params)) 64)
+     (min (- (int (:p2 @*params)) 1)
+          (int (:p1 @*params)))
+     (max (+ (int (:p1 @*params)) 1)
+          (int (:p2 @*params)))
+     (max 0 (int (:uniqueness @*params)))
+     (get {0 1 1 3} (int (:mode @*params)) 1)])
 
   (setup [this]
-    (let [*matcher (-*matcher stereo)
-          vals (iter/->Iterator (values this))]
-      (reset! *matcher (StereoSGM/create
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)))))
+    (let [vals (iter/->Iterator (values this))
+          algorithm (opencv_cudastereo/createStereoSGM
+                      (iter/>>> vals)
+                      (iter/>>> vals)
+                      (iter/>>> vals)
+                      (iter/>>> vals)
+                      (iter/>>> vals)
+                      (iter/>>> vals))
+          algorithm (StereoSGM. algorithm)]
+      (reset! *matcher algorithm)))
 
-  (values [_]
-    (values stereo))
+  (setup [this m]
+    (dosync
+      (swap! *params
+             #(map (fn [[k v]]
+                     (assoc % k v))
+                   (seq m)))
+      (setup this)))
 
-  (options [_]
-    (options stereo))
-
-  (setup [_ map]
-    (setup stereo map))
-
-  (setup [_ k v]
-    (setup stereo k v))
+  (setup [this k v]
+    (let [kk (if (keyword? k) k (keyword k))]
+      (dosync
+        (swap! *params assoc kk v)
+        (setup this))))
 
   (param [_ key]
-    (param stereo key))
+    (if (keyword? key)
+      (get @*params key)
+      (get @*params (keyword key))))
 
   (params [_]
-    (params stereo))
+    @*params)
 
-  (disparity-map [_ images]
-    (disparity-map stereo images))
+  (disparity-map [_ [left right]]
+    (let [disp_cv_mat (Mat.)
+          left_cv_mat (core-to-cv left)
+          right_cv_mat (core-to-cv right)
+          disp_cuda_mat (GpuMat.)
+          left_cuda_mat (GpuMat.)
+          right_cuda_mat (GpuMat.)]
+      (.upload left_cuda_mat left_cv_mat)
+      (.upload right_cuda_mat right_cv_mat)
+      (.compute ^StereoMatcher @*matcher
+                left_cuda_mat
+                right_cuda_mat
+                disp_cuda_mat)
+      (.download disp_cuda_mat disp_cv_mat)
+      (cv-to-core disp_cv_mat)))
 
   (project3d [_ disparity disparity-to-depth-map]
-    (project3d stereo disparity disparity-to-depth-map)))
+    (let [disparity_cv (core-to-cv disparity)
+          disparity_cuda (GpuMat.)
+          image_3d_cv (Mat.)
+          image_3d_cuda (GpuMat.)
+          dtp_cv (core-to-cv disparity-to-depth-map)
+          dtp_cuda (GpuMat.)]
+      (.upload disparity_cuda disparity_cv)
+      (.upload dtp_cuda dtp_cv)
+      (opencv_cudastereo/reprojectImageTo3D disparity_cuda
+                                            image_3d_cuda
+                                            dtp_cuda)
+      (.download image_3d_cuda image_3d_cv)
+      (cv-to-core image_3d_cv)))
+  )
 
 (defn create-cpu-stereo-bm
   {:static true
@@ -342,17 +426,14 @@
   {:static true
    :tag    BlockMatcher}
   ([^StereoBMProp props]
-   (let [matcher (->CudaStereoBM
-                   (->CpuStereoBM (atom (map->StereoBMProp props))
-                                  (atom nil)))]
+   (let [matcher (->CudaStereoBM (atom (map->StereoBMProp props))
+                                 (atom nil))]
      (setup matcher)
      matcher))
   ([] (create-cuda-stereo-bm
         (map->StereoBMProp
           {:num-disparities 1
            :block-size      21
-           :missing         0
-           :ddepth          -1
            }))))
 
 (defn create-cpu-stereo-sgbm
@@ -383,32 +464,24 @@
 (defn create-cuda-stereo-sgbm
   {:static true
    :tag    BlockMatcher}
-  ([^StereoSGBMProp props]
-   (let [matcher (->CudaStereoSGBM
-                   (->CpuStereoSGBM (atom (map->StereoSGBMProp props))
-                                    (atom nil)))]
+  ([^StereoSGMProp props]
+   (let [matcher (->CudaStereoSGM (atom (map->StereoSGMProp props))
+                                  (atom nil))]
      (setup matcher)
      matcher))
   ([] (create-cuda-stereo-sgbm
-        (map->StereoSGBMProp
-          {:min-disparity       1
-           :num-disparities     1
-           :block-size          3
-           :p1                  216
-           :p2                  284
-           :max-disparity       1
-           :pre-filter-cap      1
-           :uniqueness          10
-           :speckle-window-size 100
-           :speckle-range       32
-           :mode                0
-           :missing             0
-           :ddepth              -1
+        (map->StereoSGMProp
+          {:min-disparity   0
+           :num-disparities 1
+           :p1              10
+           :p2              120
+           :uniqueness      5
+           :mode            0
            }))))
 
 (defn create-stereo-matcher
   "Create BlockMatcher instance.
-  key: [:cpu-bm|:cpu-sgbm|:cuda-bm|:cuda-sgbm]"
+  key: [:cpu-bm|:cpu-sgbm|:cuda-bm|:cuda-sgm]"
   {:tag    BlockMatcher
    :static true}
   [key]
@@ -416,6 +489,6 @@
     :cpu-bm (create-cpu-stereo-bm)
     :cuda-bm (create-cuda-stereo-bm)
     :cpu-sgbm (create-cpu-stereo-sgbm)
-    :cuda-sgbm (create-cuda-stereo-sgbm)
+    :cuda-sgm (create-cuda-stereo-sgbm)
     (throw (Exception. (str "Unknown matcher name: " key)))
     ))

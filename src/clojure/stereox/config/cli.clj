@@ -38,7 +38,7 @@
     :default :cpu-bm
     :default-desc "cpu-bm"
     :parse-fn #(-> % (str) (.trim) (.toLowerCase) (keyword))
-    :validate [#(some (fn [v] (= % v)) [:cpu-bm :cpu-sgbm :cuda-bm :cuda-sgbm])
+    :validate [#(some (fn [v] (= % v)) [:cpu-bm :cpu-sgbm :cuda-bm :cuda-sgm])
                "Must be one of: [ cpu-bm | cpu-sgbm | cuda-bm | cuda-sgbm ]"]]
 
    [nil "--config FOLDER_NAME" "Folder with configuration files"
