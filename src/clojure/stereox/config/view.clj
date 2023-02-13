@@ -30,6 +30,7 @@
          :panel    {:width 300}
          :init     {:w false
                     :h false}
+         :saved    false
          :scale    1.
          :alive    true
          :width    1
@@ -97,9 +98,15 @@
       (swap! *state assoc-in [:camera :image] image))))
 
 (defn- update-matcher-params [k v]
+  (swap! *state assoc :saved false)
   (.setup ^BlockMatcher (:block-matcher (logic/state @*logic)) k v))
 
+(defn- update-camera-params [k v]
+  (swap! *state assoc :saved false)
+  (.setup ^IStereoCamera (:camera (logic/state @*logic)) k v))
+
 (defn- on-matcher-update [k v]
+  (swap! *state assoc :saved false)
   (swap! *state assoc-in [:controls :matcher]
          (-> (map (fn [{:keys [id max min] :as args}]
                     (if (.equalsIgnoreCase id k)
@@ -111,10 +118,8 @@
              (doall)
              (vec))))
 
-(defn- update-camera-params [k v]
-  (.setup ^IStereoCamera (:camera (logic/state @*logic)) k v))
-
 (defn- matcher-state-update []
+  (swap! *state assoc :saved false)
   (swap! *state assoc-in [:controls :matcher]
          (-> (map (fn [[k min max]]
                     {:val (get (logic/matcher-params @*logic)
@@ -127,6 +132,7 @@
              (vec))))
 
 (defn- camera-state-update []
+  (swap! *state assoc :saved false)
   (swap! *state assoc-in [:controls :camera]
          (-> (map (fn [[k min max]]
                     {:val (get (logic/camera-params @*logic)
@@ -139,6 +145,7 @@
              (vec))))
 
 (defn- on-camera-update [k v]
+  (swap! *state assoc :saved false)
   (swap! *state assoc-in [:controls :camera]
          (-> (map (fn [{:keys [id max min] :as args}]
                     (if (.equalsIgnoreCase id k)
@@ -180,7 +187,7 @@
 
 (defn- save-settings [_]
   ; TODO
-
+  (swap! *state assoc :saved true)
   )
 
 (load "dom")

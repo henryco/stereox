@@ -82,18 +82,23 @@
    :min-height 15
    :spacing    20})
 
-(defn save-button [_]
-  {:fx/type :v-box
+(defn save-button [{:keys [saved]}]
+  {:fx/type   :v-box
    :alignment :center
-   :children [{:fx/type v-separator}
-              {:fx/type   :h-box
-               :alignment :center-right
-               :spacing    20
-               :children  [{:fx/type   :button
-                            :text      "Save"
-                            :on-action save-settings}
-                           {:fx/type v-separator}]}
-              {:fx/type v-separator}]
+   :children  [{:fx/type v-separator}
+               {:fx/type   :h-box
+                :alignment :center-right
+                :spacing   20
+                :children  [{:fx/type :label
+                             :text-fill :green
+                             :text    (if (true? saved)
+                                        "Settings saved"
+                                        "")}
+                            {:fx/type   :button
+                             :text      "Save"
+                             :on-action save-settings}
+                            {:fx/type v-separator}]}
+               {:fx/type v-separator}]
    })
 
 (defn render-parameters [state]
@@ -117,8 +122,7 @@
                                            {:fx/type v-separator}
                                            {:fx/type v-separator}]}
                  }
-                {:fx/type save-button}
-                ]
+                {:fx/type save-button :saved (:saved state)}]
    })
 
 (defn root [state]
