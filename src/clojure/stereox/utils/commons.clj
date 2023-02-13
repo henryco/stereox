@@ -6,6 +6,12 @@
            (org.opencv.imgproc Imgproc))
   (:gen-class))
 
+(defn clamp
+  "Constrain a value to lie between two further values"
+  {:static true}
+  [$min$ $max$ value]
+  (min $max$ (max $min$ value)))
+
 (defn img-copy
   "Copy image matrix, optionally apply color change.
   e.g. code: Imgproc/COLOR_BGR2GRAY"

@@ -45,10 +45,13 @@
   "Configuration logic interface"
 
   (matcher-options [_]
-    "Returns block matcher options (map {:key :max-val})")
+    "Returns block matcher options [[id min max]...]")
 
   (matcher-params [_]
     "Returns block matcher parameters as a map")
+
+  (camera-options [_]
+    "Returns stereo camera options [[id min max]...]")
 
   (camera-params [_]
     "Returns stereo camera parameters as a map")
@@ -74,17 +77,21 @@
   (matcher-options [_]
     (bm/options (:block-matcher @*state)))
 
-  (camera-params [_]
-    (camera/params (:camera @*state)))
-
   (matcher-params [_]
     (bm/params (:block-matcher @*state)))
+
+  (camera-options [_]
+    (camera/options (:camera @*state)))
+
+  (camera-params [_]
+    (camera/params (:camera @*state)))
 
   (state [_]
     (map->LogicState @*state))
 
   (render-frame [_]
     (let [captured (camera/capture (:camera @*state))
+          ; TODO
           rectified (nrm/rectify (:normalizer @*state)
                                  captured)
           disparity (bm/disparity-map (:block-matcher @*state)

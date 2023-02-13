@@ -7,7 +7,9 @@
   (:import (javafx.scene.image Image)
            (org.bytedeco.javacv JavaFXFrameConverter OpenCVFrameConverter$ToOrgOpenCvCoreMat)
            (org.opencv.core CvType Mat)
-           (org.opencv.imgproc Imgproc)))
+           (org.opencv.imgproc Imgproc)
+           (stereox.cv.block_matching BlockMatcher)
+           (stereox.cv.stereo_camera IStereoCamera)))
 
 (def ^:private *logic
   "Logic"
@@ -94,7 +96,7 @@
       (swap! *state assoc-in [:camera :image] image))))
 
 (defn- update-matcher-params [k v]
-  (.setup (:block-matcher (logic/state @*logic)) k v))
+  (.setup ^BlockMatcher (:block-matcher (logic/state @*logic)) k v))
 
 (defn- on-matcher-update [k v]
   (swap! *state assoc-in [:controls :matcher]
@@ -108,6 +110,48 @@
              (doall)
              (vec))))
 
+(defn- update-camera-params [k v]
+  (.setup ^IStereoCamera (:camera (logic/state @*logic)) k v))
+
+(defn- matcher-state-update []
+  (swap! *state assoc-in [:controls :matcher]
+         (-> (map (fn [[k min max]]
+                    {:val (get (logic/matcher-params @*logic)
+                               (keyword k))
+                     :min min
+                     :max max
+                     :id  k})
+                  (logic/matcher-options @*logic))
+             (doall)
+             (vec))))
+
+(defn- camera-state-update []
+  (swap! *state assoc-in [:controls :camera]
+         (-> (map (fn [[k min max]]
+                    {:val (get (logic/camera-params @*logic)
+                               (keyword k))
+                     :min min
+                     :max max
+                     :id  k})
+                  (logic/camera-options @*logic))
+             (doall)
+             (vec))))
+
+(defn- on-camera-update [k v]
+  (swap! *state assoc-in [:controls :camera]
+         (-> (map (fn [{:keys [id max min] :as args}]
+                    (if (.equalsIgnoreCase id k)
+                      (do (if (not= v val)
+                            (update-camera-params k v))
+                          {:id id :min min :max max :val v})
+                      args))
+                  (-> @*state :controls :camera))
+             (doall)
+             (vec)))
+  (.unify ^IStereoCamera (:camera (logic/state @*logic)))
+  (if (not= v -1)
+    (camera-state-update)))
+
 (defn- initialize-logic [{:as args}]
   (reset! *logic (logic/configure args)))
 
@@ -119,16 +163,8 @@
                         (.replaceFirst ":"
                                        ""))
               " ] "))
-  (swap! *state assoc-in [:controls :matcher]
-         (-> (map (fn [[k min max]]
-                    {:val (get (logic/matcher-params @*logic)
-                               (keyword k))
-                     :min min
-                     :max max
-                     :id  k})
-                  (logic/matcher-options @*logic))
-             (doall)
-             (vec)))
+  (matcher-state-update)
+  (camera-state-update)
   (swap! *state assoc-in [:camera :viewport]
          {:width  (:width args)
           :height (:height args)
