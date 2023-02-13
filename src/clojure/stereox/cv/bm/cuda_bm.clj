@@ -4,7 +4,7 @@
                        ^Atom *matcher]
   BlockMatcher
   (options [_]
-    [["num-disparities" 0 100]
+    [["num-disparities" 0 16]
      ["block-size" 5 500]
      ])
 
