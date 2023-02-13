@@ -108,7 +108,7 @@
   ([] (create-cuda-stereo-sgm
         (map->StereoSGMProp
           {:min-disparity   0
-           :num-disparities 1
+           :num-disparities 0
            :p1              10
            :p2              120
            :uniqueness      5
