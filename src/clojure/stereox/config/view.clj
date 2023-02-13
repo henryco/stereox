@@ -192,7 +192,7 @@
         (swap! *state assoc :saved true))))
 
 (defn- change-mode-selected [^Keyword mode]
-  (println "change mode: " mode)
+  ; TODO: CALL LOGIC CHANGE MODE
   (case mode
     :disparity (do
                  )
