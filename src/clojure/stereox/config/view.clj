@@ -178,6 +178,11 @@
           :min-x  0
           :min-y  0}))
 
+(defn- save-settings [_]
+  ; TODO
+
+  )
+
 (load "dom")
 
 (defn- initialize-gui []

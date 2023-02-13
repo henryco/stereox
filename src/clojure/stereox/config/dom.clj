@@ -82,6 +82,20 @@
    :min-height 15
    :spacing    20})
 
+(defn save-button [_]
+  {:fx/type :v-box
+   :alignment :center
+   :children [{:fx/type v-separator}
+              {:fx/type   :h-box
+               :alignment :center-right
+               :spacing    20
+               :children  [{:fx/type   :button
+                            :text      "Save"
+                            :on-action save-settings}
+                           {:fx/type v-separator}]}
+              {:fx/type v-separator}]
+   })
+
 (defn render-parameters [state]
   {:fx/type    :v-box
    :style      {:-fx-background-color :white}
@@ -101,8 +115,12 @@
                                            {:fx/type camera-parameters
                                             :camera  (-> state :controls :camera)}
                                            {:fx/type v-separator}
-                                           {:fx/type v-separator}]}
-                 }]
+                                           {:fx/type v-separator}
+                                           ;{:fx/type save-button}
+                                           ]}
+                 }
+                {:fx/type save-button}
+                ]
    })
 
 (defn root [state]
