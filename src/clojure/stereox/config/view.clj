@@ -5,7 +5,8 @@
     [stereox.utils.commons :as commons]
     [stereox.utils.guifx :as gfx])
   (:gen-class :main true)
-  (:import (javafx.scene.image Image)
+  (:import (clojure.lang Keyword)
+           (javafx.scene.image Image)
            (org.bytedeco.javacv JavaFXFrameConverter OpenCVFrameConverter$ToOrgOpenCvCoreMat)
            (org.opencv.core CvType Mat)
            (org.opencv.imgproc Imgproc)
@@ -189,6 +190,27 @@
   (if (false? (:saved @*state))
     (do (logic/save-settings @*logic)
         (swap! *state assoc :saved true))))
+
+(defn- change-mode-selected [^Keyword mode]
+  (println "change mode: " mode)
+  (case mode
+    :disparity (do
+                 )
+    :depth (do
+             )
+    :3D (do
+          )
+    :L (do
+         )
+    :R (do
+         )
+    (throw
+      (Exception.
+        (str "unknown mode: "
+             mode)))))
+
+(def ^:private on-mode-selected
+  (deb/debounce change-mode-selected 1000))
 
 (load "dom")
 
