@@ -186,8 +186,9 @@
           :min-y  0}))
 
 (defn- save-settings [_]
-  (logic/save-settings @*logic)
-  (swap! *state assoc :saved true))
+  (if (false? (:saved @*state))
+    (do (logic/save-settings @*logic)
+        (swap! *state assoc :saved true))))
 
 (load "dom")
 

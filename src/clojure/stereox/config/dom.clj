@@ -88,7 +88,7 @@
    :children  [{:fx/type v-separator}
                {:fx/type   :h-box
                 :alignment :center-right
-                :spacing   20
+                :spacing   25
                 :children  [{:fx/type :label
                              :text-fill :green
                              :text    (if (true? saved)
