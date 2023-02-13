@@ -109,6 +109,7 @@
     )
 
   (save-settings [_]
+    (println "Saving")
     ; TODO
     )
   )
