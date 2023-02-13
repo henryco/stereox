@@ -115,9 +115,7 @@
                                            {:fx/type camera-parameters
                                             :camera  (-> state :controls :camera)}
                                            {:fx/type v-separator}
-                                           {:fx/type v-separator}
-                                           ;{:fx/type save-button}
-                                           ]}
+                                           {:fx/type v-separator}]}
                  }
                 {:fx/type save-button}
                 ]
