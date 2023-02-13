@@ -53,11 +53,11 @@
    :spacing    20
    :children   (map (fn [{:keys [id min max val]}]
                       {:fx/type   slider
-                       :value     val
+                       :value     (if (some? val) (int val) -1)
                        :id        id
                        :max       max
                        :min       min
-                       :update-fn #(on-matcher-update id (int %))})
+                       :update-fn #(debounce-matcher-update id (int %))})
                     matcher)
    })
 
@@ -68,11 +68,11 @@
    :spacing    20
    :children   (map (fn [{:keys [id min max val]}]
                       {:fx/type   slider
-                       :value     (if (some? val) val -1)
+                       :value     (if (some? val) (int val) -1)
                        :id        id
                        :max       max
                        :min       min
-                       :update-fn #(on-camera-update id (int %))})
+                       :update-fn #(debounce-camera-update id (int %))})
                     camera)
    })
 

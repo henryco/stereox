@@ -1,5 +1,6 @@
 (ns stereox.config.view
   (:require
+    [stereox.utils.debounce :as deb]
     [stereox.config.logic :as logic]
     [stereox.utils.commons :as commons]
     [stereox.utils.guifx :as gfx])
@@ -151,6 +152,12 @@
   (.unify ^IStereoCamera (:camera (logic/state @*logic)))
   (if (not= v -1)
     (camera-state-update)))
+
+(def ^:private debounce-matcher-update
+  (deb/debounce on-matcher-update 2000))
+
+(def ^:private debounce-camera-update
+  (deb/debounce on-camera-update 500))
 
 (defn- initialize-logic [{:as args}]
   (reset! *logic (logic/configure args)))
