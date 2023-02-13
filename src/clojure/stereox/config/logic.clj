@@ -91,7 +91,7 @@
 
   (render-frame [_]
     (let [captured (camera/capture (:camera @*state))
-          ; TODO
+          ; TODO DE-NOISE
           rectified (nrm/rectify (:normalizer @*state)
                                  captured)
           disparity (bm/disparity-map (:block-matcher @*state)
