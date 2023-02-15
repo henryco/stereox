@@ -1,10 +1,11 @@
 (in-ns 'stereox.cv.block-matching)
 
 (deftype CudaStereoBM [^Atom *params
-                       ^Atom *matcher]
+                       ^Atom *matcher
+                       ^Mat disparity-to-depth-map]
   BlockMatcher
   (options [_]
-    [["num-disparities" 0 16]
+    [["num-disparities" 1 16]
      ["block-size" 1 51]
      ])
 
@@ -38,49 +39,47 @@
   (params [_]
     (map->StereoBMProp @*params))
 
-  (disparity-map [_ [left right]]
-    (let [disp_cv_mat (Mat.)
-          left_cv_mat (core-to-cv left)
-          right_cv_mat (core-to-cv right)
-          disp_cuda_mat (GpuMat.)
-          left_cuda_mat (GpuMat.)
-          right_cuda_mat (GpuMat.)]
-      (.upload left_cuda_mat left_cv_mat)
-      (.upload right_cuda_mat right_cv_mat)
-      (.compute ^StereoMatcher @*matcher
-                left_cuda_mat
-                right_cuda_mat
-                disp_cuda_mat)
-      (.download disp_cuda_mat disp_cv_mat)
-      (cv-to-core disp_cv_mat)))
-
-  (project3d [_ disparity disparity-to-depth-map]
-    (let [disparity_cv (core-to-cv disparity)
-          disparity_cuda (GpuMat.)
-          image_3d_cv (Mat.)
-          image_3d_cuda (GpuMat.)
-          dtp_cv (core-to-cv disparity-to-depth-map)
-          dtp_cuda (GpuMat.)]
-      (.upload disparity_cuda disparity_cv)
-      (.upload dtp_cuda dtp_cv)
-      (opencv_cudastereo/reprojectImageTo3D disparity_cuda
-                                            image_3d_cuda
-                                            dtp_cuda)
-      (.download image_3d_cuda image_3d_cv)
-      (cv-to-core image_3d_cv)))
-
+  (compute [this [left right]]
+    (let [ref_disparity (calc-disparity-cuda
+                          (commons/img-copy left Imgproc/COLOR_BGR2GRAY)
+                          (commons/img-copy right Imgproc/COLOR_BGR2GRAY)
+                          @*matcher)
+          ref_depth (calc-depth-cuda
+                      @ref_disparity
+                      (first (values this)))
+          ref_proj (calc-projection-cuda
+                     @ref_disparity
+                     disparity-to-depth-map)
+          disp_core (delay (gpu-to-core @ref_disparity))]
+      (map->MatchResults
+        {:left          (ref left)
+         :right         (ref right)
+         :disparity     disp_core
+         :depth         ref_depth
+         :disparity_bgr (delay (commons/img-copy
+                                 @disp_core
+                                 Imgproc/COLOR_GRAY2BGR))
+         :depth_bgr     (delay (commons/img-copy
+                                 (gpu-to-core @ref_depth)
+                                 Imgproc/COLOR_BGRA2BGR))
+         :projection    (delay (gpu-to-core @ref_proj))})))
   )
+
 
 (defn create-cuda-stereo-bm
   {:static true
    :tag    BlockMatcher}
-  ([^StereoBMProp props]
+  ([^Mat disparity-to-depth-map
+    ^StereoBMProp props]
    (let [matcher (->CudaStereoBM (atom (map->StereoBMProp props))
-                                 (atom nil))]
+                                 (atom nil)
+                                 (core-to-gpu disparity-to-depth-map))]
      (setup matcher)
      matcher))
-  ([] (create-cuda-stereo-bm
-        (map->StereoBMProp
-          {:num-disparities 1
-           :block-size      21
-           }))))
+  ([^Mat disparity-to-depth-map]
+   (create-cuda-stereo-bm
+     disparity-to-depth-map
+     (map->StereoBMProp
+       {:num-disparities 1
+        :block-size      21
+        }))))

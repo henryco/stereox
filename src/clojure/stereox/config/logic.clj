@@ -60,9 +60,11 @@
     "Returns:
       stereox.config.logic.LogicState")
 
-  (render-frame [_]
+  (render-frame [_ mode]
     "Grabs frame from stereo camera and
     calculates disparity map.
+    Params:
+      mode - [:disparity_bgr|:disparity|:depth_bgr|:depth|:projection|:left|:right]
     Returns:
       Frame")
 
@@ -89,32 +91,25 @@
   (state [_]
     (map->LogicState @*state))
 
-  (render-frame [_]
+  (render-frame [_ mode]
+    (if-not
+      (contains? #{:disparity_bgr :disparity :depth_bgr :depth :projection :left :right} mode)
+      (throw (Exception. (str "No such computation type: " mode))))
     (let [captured (camera/capture (:camera @*state))
           ; TODO DE NOISE
-          rectified (nrm/rectify (:normalizer @*state)
-                                 captured)
-          disparity (bm/disparity-map (:block-matcher @*state)
-                                      (to-gray rectified))
-          ;_3d (bm/project3d (:block-matcher @*state)
-          ;                  disparity
-          ;                  (:disparity_to_depth_matrix (:calibration @*state)))
-          ]
-      (->Frame captured
-               rectified
-               disparity))
-      ;(->Frame captured
-      ;         rectified
-      ;         _3d))
-    )
+          rectified (nrm/rectify (:normalizer @*state) captured)
+          computed (bm/compute (:block-matcher @*state) rectified)]
+      (->Frame captured rectified (deref (get computed mode)))))
 
   (save-settings [_]
     ; TODO
     )
   )
 
-(defn- read-calibration-data [& {:keys [config-folder
-                                        width height ids]}]
+(defn- read-calibration-data
+  {:static true
+   :tag    CalibrationData}
+  [& {:keys [config-folder width height ids]}]
   (sc/calibration-from-file
     (first (su/list-candidates config-folder width height
                                su/CALIB_POSTFIX ids))))
@@ -129,7 +124,7 @@
         params (map->ConfigParameters args)]
     (->ConfigLogic
       (atom
-        (map->LogicState {:block-matcher (bm/create-stereo-matcher (:matcher params))
+        (map->LogicState {:block-matcher (bm/create-stereo-matcher (:matcher params) (:disparity_to_depth_matrix c_data))
                           :normalizer    (nrm/create-normalizer c_data (:ids params))
                           :camera        (camera/create params)
                           :calibration   c_data

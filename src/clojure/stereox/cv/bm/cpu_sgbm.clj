@@ -16,7 +16,8 @@
    ^Integer ddepth])
 
 (deftype CpuStereoSGBM [^Atom *params
-                        ^Atom *matcher]
+                        ^Atom *matcher
+                        ^Mat disparity-to-depth-map]
   BlockMatcher
   (options [_]
     [["min-disparity" 0 100]
@@ -87,46 +88,55 @@
   (params [_]
     @*params)
 
-  (disparity-map [_ [left right]]
-    (let [disparity (Mat.)]
-      (.compute ^StereoMatcher @*matcher
-                (core-to-cv left)
-                (core-to-cv right)
-                disparity)
-      (cv-to-core disparity)))
-
-  (project3d [_ disparity disparity-to-depth-map]
-    (let [_3dImage (Mat.)
-          handle (-> @*params :missing (> 0))
-          ddepth (-> @*params :ddepth (ord -1))]
-      (opencv_calib3d/reprojectImageTo3D (core-to-cv disparity)
-                                         _3dImage
-                                         (core-to-cv disparity-to-depth-map)
-                                         (boolean handle)
-                                         (int ddepth))
-      (cv-to-core _3dImage))))
+  (compute [_ [left right]]
+    (let [ref_disparity (calc-disparity-cpu
+                          (commons/img-copy left Imgproc/COLOR_BGR2GRAY)
+                          (commons/img-copy right Imgproc/COLOR_BGR2GRAY)
+                          @*matcher)
+          core_disp (delay (cv-to-core @ref_disparity))
+          core_disp_bgr (delay (commons/img-copy
+                                 @core_disp
+                                 Imgproc/COLOR_GRAY2BGR))]
+      (map->MatchResults
+        {:left          (ref left)
+         :right         (ref right)
+         :disparity     core_disp
+         :depth         core_disp
+         :disparity_bgr core_disp_bgr
+         :depth_bgr     core_disp_bgr
+         :projection    (delay (cv-to-core
+                                 (calc-projection-cpu
+                                   @ref_disparity
+                                   disparity-to-depth-map
+                                   (-> @*params :missing (> 0))
+                                   (-> @*params :ddepth (ord -1)))))})))
+  )
 
 (defn create-cpu-stereo-sgbm
   {:static true
    :tag    BlockMatcher}
-  ([^StereoSGBMProp props]
+  ([^Mat disparity-to-depth-map
+    ^StereoSGBMProp props]
    (let [matcher (->CpuStereoSGBM (atom (map->StereoSGBMProp props))
-                                  (atom nil))]
+                                  (atom nil)
+                                  (core-to-cv disparity-to-depth-map))]
      (setup matcher)
      matcher))
-  ([] (create-cpu-stereo-sgbm
-        (map->StereoSGBMProp
-          {:min-disparity       1
-           :num-disparities     1
-           :block-size          3
-           :p1                  216
-           :p2                  284
-           :max-disparity       1
-           :pre-filter-cap      1
-           :uniqueness          10
-           :speckle-window-size 100
-           :speckle-range       32
-           :mode                0
-           :missing             0
-           :ddepth              -1
-           }))))
+  ([^Mat disparity-to-depth-map]
+   (create-cpu-stereo-sgbm
+     disparity-to-depth-map
+     (map->StereoSGBMProp
+       {:min-disparity       1
+        :num-disparities     1
+        :block-size          3
+        :p1                  216
+        :p2                  284
+        :max-disparity       1
+        :pre-filter-cap      1
+        :uniqueness          10
+        :speckle-window-size 100
+        :speckle-range       32
+        :mode                0
+        :missing             0
+        :ddepth              -1
+        }))))

@@ -6,6 +6,7 @@
     [stereox.utils.guifx :as gfx])
   (:gen-class :main true)
   (:import (clojure.lang Keyword)
+           (java.io ByteArrayInputStream)
            (javafx.scene.image Image)
            (org.bytedeco.javacv JavaFXFrameConverter OpenCVFrameConverter$ToOrgOpenCvCoreMat)
            (org.opencv.core CvType Mat)
@@ -32,6 +33,7 @@
          :init     {:w false
                     :h false}
          :saved    false
+         :mode     "disparity_bgr"
          :scale    1.
          :alive    true
          :width    1
@@ -85,16 +87,13 @@
         conv_2 (new OpenCVFrameConverter$ToOrgOpenCvCoreMat)
         mat (new Mat)]
     (.convertTo matrix mat CvType/CV_8U)
-    (->> (commons/img-copy mat Imgproc/COLOR_GRAY2BGR)
+    (->> mat
          (.convert conv_2)
          (.convert conv_1))))
 
 (defn- main-cb-loop []
-  (let [frame (logic/render-frame @*logic)
-        image (matrix-to-image (:disparity frame))
-        ;image (matrix-to-image (first (:captured frame)))
-        ;image (matrix-to-image (first (:rectified frame)))
-        ]
+  (let [frame (logic/render-frame @*logic (-> @*state :mode (keyword)))
+        image (matrix-to-image (:disparity frame))]
     (if (some? image)
       (swap! *state assoc-in [:camera :image] image))))
 
@@ -192,22 +191,14 @@
         (swap! *state assoc :saved true))))
 
 (defn- change-mode-selected [^Keyword mode]
-  ; TODO: CALL LOGIC CHANGE MODE
-  (case mode
-    :disparity (do
-                 )
-    :depth (do
-             )
-    :3D (do
-          )
-    :L (do
-         )
-    :R (do
-         )
-    (throw
-      (Exception.
-        (str "unknown mode: "
-             mode)))))
+  (swap! *state assoc :mode
+         (get {:disparity "disparity_bgr"
+               :depth     "depth_bgr"
+               :3D        "projection"
+               :L         "left"
+               :R         "right"}
+              mode
+              "disparity_bgr")))
 
 (def ^:private on-mode-selected
   (deb/debounce change-mode-selected 1000))
