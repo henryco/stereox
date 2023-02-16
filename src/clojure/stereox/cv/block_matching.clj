@@ -34,12 +34,18 @@
     (.upload g_mat (core-to-cv mat))
     g_mat))
 
-(defn- gpu-to-core
-  {:static true}
+(defn- gpu-to-cv
+  {:static true
+   :tag    Mat}
   [^GpuMat mat]
   (let [cv_mat (Mat.)]
     (.download mat cv_mat)
-    (cv-to-core cv_mat)))
+    cv_mat))
+
+(defn- gpu-to-core
+  {:static true}
+  [^GpuMat mat]
+  (cv-to-core (gpu-to-cv mat)))
 
 (defn- ord
   "Returns original value if not nil,
@@ -69,7 +75,7 @@
 (defn- calc-projection-cpu
   {:static true
    :tag    Ref}
-  [disparity disparity-to-depth-map handle ddepth]
+  [^Mat disparity ^Mat disparity-to-depth-map handle ddepth]
   (delay
     (let [_3dImage (Mat.)]
       (opencv_calib3d/reprojectImageTo3D
@@ -107,15 +113,25 @@
 (defn- calc-projection-cuda
   {:static true
    :tag    Ref}
-  [^GpuMat disparity ^GpuMat disparity-to-depth-map]
-  (delay
-    (let [image_3d_cuda (GpuMat.)]
-      ; TODO FIXME REPLACE WITH Calib3d
-      (opencv_cudastereo/reprojectImageTo3D
-        disparity
-        image_3d_cuda
-        disparity-to-depth-map)
-      image_3d_cuda)))
+  [^GpuMat disparity
+   ^Mat disparity-to-depth-map]
+  (calc-projection-cpu
+    (gpu-to-cv disparity)
+    disparity-to-depth-map
+    false
+    -1)
+  ;(delay
+  ;  (let [image_3d_cuda (GpuMat.)]
+  ;    ; TODO FIXME REPLACE WITH Calib3d
+  ;    (opencv_cudastereo/reprojectImageTo3D
+  ;      disparity
+  ;      image_3d_cuda
+  ;      disparity-to-depth-map
+  ;      ;(gpu-to-cv disparity-to-depth-map)
+  ;      ;disparity-to-depth-map
+  ;      )
+  ;    image_3d_cuda))
+  )
 
 (defrecord MatchResults
   [^Ref left

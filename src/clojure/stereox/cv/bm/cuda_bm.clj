@@ -62,7 +62,9 @@
          :depth_bgr     (delay (commons/img-copy
                                  (gpu-to-core @ref_depth)
                                  Imgproc/COLOR_BGRA2BGR))
-         :projection    (delay (gpu-to-core @ref_proj))})))
+         ;:projection    (delay (gpu-to-core @ref_proj))
+         :projection    (delay (cv-to-core @ref_proj))
+         })))
   )
 
 
@@ -73,7 +75,7 @@
     ^StereoBMProp props]
    (let [matcher (->CudaStereoBM (atom (map->StereoBMProp props))
                                  (atom nil)
-                                 (core-to-gpu disparity-to-depth-map))]
+                                 (core-to-cv disparity-to-depth-map))]
      (setup matcher)
      matcher))
   ([^Mat disparity-to-depth-map]
