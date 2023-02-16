@@ -89,10 +89,10 @@
     @*params)
 
   (compute [_ [left right]]
-    (let [ref_disparity (calc-disparity-cpu
-                          (commons/img-copy left Imgproc/COLOR_BGR2GRAY)
-                          (commons/img-copy right Imgproc/COLOR_BGR2GRAY)
-                          @*matcher)
+    (let [ref_disparity (delay (calc-disparity-cpu
+                                 (commons/img-copy left Imgproc/COLOR_BGR2GRAY)
+                                 (commons/img-copy right Imgproc/COLOR_BGR2GRAY)
+                                 @*matcher))
           core_disp (delay (cv-to-core @ref_disparity))
           core_disp_bgr (delay (commons/img-copy
                                  @core_disp

@@ -69,18 +69,18 @@
     @*params)
 
   (compute [this [left right]]
-    (let [ref_disparity (calc-disparity-cuda
-                          (commons/img-copy left Imgproc/COLOR_BGR2GRAY)
-                          (commons/img-copy right Imgproc/COLOR_BGR2GRAY)
-                          @*matcher)
-          ref_depth (calc-depth-cuda
-                      @ref_disparity
-                      (first (values this)))
-          ref_proj (calc-projection-cuda
-                     @ref_disparity
-                     disparity-to-depth-map
-                     (-> @*params :missing (> 0))
-                     (-> @*params :ddepth (ord -1)))
+    (let [ref_disparity (delay (calc-disparity-cuda
+                                 (commons/img-copy left Imgproc/COLOR_BGR2GRAY)
+                                 (commons/img-copy right Imgproc/COLOR_BGR2GRAY)
+                                 @*matcher))
+          ref_depth (delay (calc-depth-cuda
+                             @ref_disparity
+                             (first (values this))))
+          ref_proj (delay (calc-projection-cuda
+                            @ref_disparity
+                            disparity-to-depth-map
+                            (-> @*params :missing (> 0))
+                            (-> @*params :ddepth (ord -1))))
           disp_core (delay (gpu-to-core @ref_disparity))]
       (map->MatchResults
         {:left          (ref left)

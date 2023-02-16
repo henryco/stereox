@@ -65,50 +65,46 @@
   {:static true
    :tag    Ref}
   [left right ^StereoMatcher matcher]
-  (delay
-    (let [disparity (Mat.)]
-      (.compute matcher
-                (core-to-cv left)
-                (core-to-cv right)
-                disparity))))
+  (let [disparity (Mat.)]
+    (.compute matcher
+              (core-to-cv left)
+              (core-to-cv right)
+              disparity)))
 
 (defn- calc-projection-cpu
   {:static true
    :tag    Ref}
   [^Mat disparity ^Mat disparity-to-depth-map handle ddepth]
-  (delay
-    (let [_3dImage (Mat.)]
-      (opencv_calib3d/reprojectImageTo3D
-        ^Mat disparity
-        ^Mat _3dImage
-        ^Mat disparity-to-depth-map
-        (boolean handle)
-        (int ddepth))
-      _3dImage)))
+  (let [_3dImage (Mat.)]
+    (opencv_calib3d/reprojectImageTo3D
+      ^Mat disparity
+      ^Mat _3dImage
+      ^Mat disparity-to-depth-map
+      (boolean handle)
+      (int ddepth))
+    _3dImage))
 
 (defn- calc-disparity-cuda
   {:static true
    :tag    Ref}
   [left right ^StereoMatcher matcher]
-  (delay
-    (let [disp_cuda_mat (GpuMat.)]
-      (.compute ^StereoMatcher matcher
-                ^GpuMat (core-to-gpu left)
-                ^GpuMat (core-to-gpu right)
-                ^GpuMat disp_cuda_mat)
-      disp_cuda_mat)))
+  (let [disp_cuda_mat (GpuMat.)]
+    (.compute ^StereoMatcher matcher
+              ^GpuMat (core-to-gpu left)
+              ^GpuMat (core-to-gpu right)
+              ^GpuMat disp_cuda_mat)
+    disp_cuda_mat))
 
 (defn- calc-depth-cuda
   {:static true
    :tag    Ref}
   [^GpuMat disparity ^Integer ndisp]
-  (delay
-    (let [color_cuda_mat (GpuMat.)]
-      (opencv_cudastereo/drawColorDisp
-        disparity
-        color_cuda_mat
-        ndisp)
-      color_cuda_mat)))
+  (let [color_cuda_mat (GpuMat.)]
+    (opencv_cudastereo/drawColorDisp
+      disparity
+      color_cuda_mat
+      ndisp)
+    color_cuda_mat))
 
 (defn- calc-projection-cuda
   {:static true
