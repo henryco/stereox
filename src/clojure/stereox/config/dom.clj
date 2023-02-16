@@ -82,13 +82,60 @@
    :min-height 15
    :spacing    20})
 
+(defn save-button [{:keys [saved]}]
+  {:fx/type   :v-box
+   :alignment :center
+   :children  [{:fx/type v-separator}
+               {:fx/type   :h-box
+                :alignment :center-right
+                :spacing   25
+                :children  [{:fx/type   :label
+                             :text-fill :green
+                             :text      (if (true? saved)
+                                          "Settings saved"
+                                          "")}
+                            {:fx/type   :button
+                             :text      "Save"
+                             :on-action save-settings}
+                            {:fx/type v-separator}]}
+               {:fx/type v-separator}]
+   })
+
+(defn camera-mode-group [_]
+  {:fx/type   :v-box
+   :alignment :center
+   :children  [{:fx/type v-separator}
+               {:fx/type   :h-box
+                :alignment :center-left
+                :spacing   13
+                :children  [{:fx/type v-separator}
+                            {:fx/type   :button
+                             :text      "Disparity"
+                             :on-action (fn [_] (on-mode-selected :disparity))}
+                            {:fx/type   :button
+                             :text      "Depth"
+                             :on-action (fn [_] (on-mode-selected :depth))}
+                            {:fx/type   :button
+                             :text      "3D"
+                             :on-action (fn [_] (on-mode-selected :3D))}
+                            {:fx/type   :button
+                             :text      "L"
+                             :on-action (fn [_] (on-mode-selected :L))}
+                            {:fx/type   :button
+                             :text      "R"
+                             :on-action (fn [_] (on-mode-selected :R))}
+                            {:fx/type v-separator}]}
+               {:fx/type v-separator}]
+   })
+
 (defn render-parameters [state]
   {:fx/type    :v-box
    :style      {:-fx-background-color :white}
    :min-width  (-> state :panel :width)
    :max-width  (-> state :panel :width)
    :max-height (:height state)
-   :children   [{:fx/type     :scroll-pane
+   :children   [{:fx/type camera-mode-group}
+                {:fx/type     :scroll-pane
                  :hbar-policy :NEVER
                  :content     {:fx/type   :v-box
                                :style     {:-fx-background-color :white}
@@ -102,7 +149,8 @@
                                             :camera  (-> state :controls :camera)}
                                            {:fx/type v-separator}
                                            {:fx/type v-separator}]}
-                 }]
+                 }
+                {:fx/type save-button :saved (:saved state)}]
    })
 
 (defn root [state]

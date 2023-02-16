@@ -5,7 +5,9 @@
     [stereox.utils.commons :as commons]
     [stereox.utils.guifx :as gfx])
   (:gen-class :main true)
-  (:import (javafx.scene.image Image)
+  (:import (clojure.lang Keyword)
+           (java.io ByteArrayInputStream)
+           (javafx.scene.image Image)
            (org.bytedeco.javacv JavaFXFrameConverter OpenCVFrameConverter$ToOrgOpenCvCoreMat)
            (org.opencv.core CvType Mat)
            (org.opencv.imgproc Imgproc)
@@ -22,7 +24,7 @@
 
 (def ^:private *state
   "JavaFX UI state"
-  (atom {:title    "StereoX Pattern Matching configuration"
+  (atom {:title    "StereoX - Stereo Matcher configuration"
          :controls {:matcher [{:id "" :val 0 :min 0 :max 0}]
                     :camera  [{:id "" :val 0 :min 0 :max 0}]}
          :camera   {:viewport {:width 1 :height 1 :min-x 0 :min-y 0}
@@ -30,6 +32,8 @@
          :panel    {:width 300}
          :init     {:w false
                     :h false}
+         :saved    false
+         :mode     "disparity_bgr"
          :scale    1.
          :alive    true
          :width    1
@@ -83,23 +87,26 @@
         conv_2 (new OpenCVFrameConverter$ToOrgOpenCvCoreMat)
         mat (new Mat)]
     (.convertTo matrix mat CvType/CV_8U)
-    (->> (commons/img-copy mat Imgproc/COLOR_GRAY2BGR)
+    (->> mat
          (.convert conv_2)
          (.convert conv_1))))
 
 (defn- main-cb-loop []
-  (let [frame (logic/render-frame @*logic)
-        image (matrix-to-image (:disparity frame))
-        ;image (matrix-to-image (first (:captured frame)))
-        ;image (matrix-to-image (first (:rectified frame)))
-        ]
+  (let [frame (logic/render-frame @*logic (-> @*state :mode (keyword)))
+        image (matrix-to-image (:disparity frame))]
     (if (some? image)
       (swap! *state assoc-in [:camera :image] image))))
 
 (defn- update-matcher-params [k v]
+  (swap! *state assoc :saved false)
   (.setup ^BlockMatcher (:block-matcher (logic/state @*logic)) k v))
 
+(defn- update-camera-params [k v]
+  (swap! *state assoc :saved false)
+  (.setup ^IStereoCamera (:camera (logic/state @*logic)) k v))
+
 (defn- on-matcher-update [k v]
+  (swap! *state assoc :saved false)
   (swap! *state assoc-in [:controls :matcher]
          (-> (map (fn [{:keys [id max min] :as args}]
                     (if (.equalsIgnoreCase id k)
@@ -111,10 +118,8 @@
              (doall)
              (vec))))
 
-(defn- update-camera-params [k v]
-  (.setup ^IStereoCamera (:camera (logic/state @*logic)) k v))
-
 (defn- matcher-state-update []
+  (swap! *state assoc :saved false)
   (swap! *state assoc-in [:controls :matcher]
          (-> (map (fn [[k min max]]
                     {:val (get (logic/matcher-params @*logic)
@@ -127,6 +132,7 @@
              (vec))))
 
 (defn- camera-state-update []
+  (swap! *state assoc :saved false)
   (swap! *state assoc-in [:controls :camera]
          (-> (map (fn [[k min max]]
                     {:val (get (logic/camera-params @*logic)
@@ -139,6 +145,7 @@
              (vec))))
 
 (defn- on-camera-update [k v]
+  (swap! *state assoc :saved false)
   (swap! *state assoc-in [:controls :camera]
          (-> (map (fn [{:keys [id max min] :as args}]
                     (if (.equalsIgnoreCase id k)
@@ -169,7 +176,7 @@
                         (str)
                         (.replaceFirst ":"
                                        ""))
-              " ] "))
+              " ] " (:width args) "x" (:height args)))
   (matcher-state-update)
   (camera-state-update)
   (swap! *state assoc-in [:camera :viewport]
@@ -177,6 +184,24 @@
           :height (:height args)
           :min-x  0
           :min-y  0}))
+
+(defn- save-settings [_]
+  (if (false? (:saved @*state))
+    (do (logic/save-settings @*logic)
+        (swap! *state assoc :saved true))))
+
+(defn- change-mode-selected [^Keyword mode]
+  (swap! *state assoc :mode
+         (get {:disparity "disparity_bgr"
+               :depth     "depth_bgr"
+               :3D        "projection"
+               :L         "left"
+               :R         "right"}
+              mode
+              "disparity_bgr")))
+
+(def ^:private on-mode-selected
+  (deb/debounce change-mode-selected 1000))
 
 (load "dom")
 

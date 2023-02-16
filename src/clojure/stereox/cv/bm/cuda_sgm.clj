@@ -9,7 +9,8 @@
    ^Integer mode])
 
 (deftype CudaStereoSGM [^Atom *params
-                        ^Atom *matcher]
+                        ^Atom *matcher
+                        ^Mat disparity-to-depth-map]
   BlockMatcher
   (options [_]
     [["min-disparity" 0 256]
@@ -19,6 +20,8 @@
      ["uniqueness" 0 100]
      ["mode" 0 1]
      ; MODE_HH = 1 MODE_HH4 = 3 : {0 1 1 3}
+     ["missing" 0 1]
+     ["ddepth" -1 -1]
      ])
 
   (values [_]
@@ -65,52 +68,56 @@
   (params [_]
     @*params)
 
-  (disparity-map [_ [left right]]
-    (let [disp_cv_mat (Mat.)
-          left_cv_mat (core-to-cv left)
-          right_cv_mat (core-to-cv right)
-          disp_cuda_mat (GpuMat.)
-          left_cuda_mat (GpuMat.)
-          right_cuda_mat (GpuMat.)]
-      (.upload left_cuda_mat left_cv_mat)
-      (.upload right_cuda_mat right_cv_mat)
-      (.compute ^StereoMatcher @*matcher
-                left_cuda_mat
-                right_cuda_mat
-                disp_cuda_mat)
-      (.download disp_cuda_mat disp_cv_mat)
-      (cv-to-core disp_cv_mat)))
-
-  (project3d [_ disparity disparity-to-depth-map]
-    (let [disparity_cv (core-to-cv disparity)
-          disparity_cuda (GpuMat.)
-          image_3d_cv (Mat.)
-          image_3d_cuda (GpuMat.)
-          dtp_cv (core-to-cv disparity-to-depth-map)
-          dtp_cuda (GpuMat.)]
-      (.upload disparity_cuda disparity_cv)
-      (.upload dtp_cuda dtp_cv)
-      (opencv_cudastereo/reprojectImageTo3D disparity_cuda
-                                            image_3d_cuda
-                                            dtp_cuda)
-      (.download image_3d_cuda image_3d_cv)
-      (cv-to-core image_3d_cv)))
+  (compute [this [left right]]
+    (let [ref_disparity (delay (calc-disparity-cuda
+                                 (commons/img-copy left Imgproc/COLOR_BGR2GRAY)
+                                 (commons/img-copy right Imgproc/COLOR_BGR2GRAY)
+                                 @*matcher))
+          ref_depth (delay (calc-depth-cuda
+                             @ref_disparity
+                             (first (values this))))
+          ref_proj (delay (calc-projection-cuda
+                            @ref_disparity
+                            disparity-to-depth-map
+                            (-> @*params :missing (> 0))
+                            (-> @*params :ddepth (ord -1))))
+          disp_core (delay (gpu-to-core @ref_disparity))]
+      (map->MatchResults
+        {:left          (ref left)
+         :right         (ref right)
+         :disparity     disp_core
+         :depth         ref_depth
+         :disparity_bgr (delay (commons/img-copy
+                                 @disp_core
+                                 Imgproc/COLOR_GRAY2BGR))
+         :depth_bgr     (delay (commons/img-copy
+                                 (gpu-to-core @ref_depth)
+                                 Imgproc/COLOR_BGRA2BGR))
+         ;:projection    (delay (gpu-to-core @ref_proj))
+         :projection    (delay (cv-to-core @ref_proj))
+         })))
   )
 
 (defn create-cuda-stereo-sgm
   {:static true
    :tag    BlockMatcher}
-  ([^StereoSGMProp props]
+  ([^Mat disparity-to-depth-map
+    ^StereoSGMProp props]
    (let [matcher (->CudaStereoSGM (atom (map->StereoSGMProp props))
-                                  (atom nil))]
+                                  (atom nil)
+                                  (core-to-cv disparity-to-depth-map))]
      (setup matcher)
      matcher))
-  ([] (create-cuda-stereo-sgm
-        (map->StereoSGMProp
-          {:min-disparity   0
-           :num-disparities 0
-           :p1              10
-           :p2              120
-           :uniqueness      5
-           :mode            0
-           }))))
+  ([^Mat disparity-to-depth-map]
+   (create-cuda-stereo-sgm
+     disparity-to-depth-map
+     (map->StereoSGMProp
+       {:min-disparity   0
+        :num-disparities 0
+        :p1              10
+        :p2              120
+        :uniqueness      5
+        :mode            0
+        :missing         0
+        :ddepth          -1
+        }))))
