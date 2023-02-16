@@ -20,6 +20,8 @@
      ["uniqueness" 0 100]
      ["mode" 0 1]
      ; MODE_HH = 1 MODE_HH4 = 3 : {0 1 1 3}
+     ["missing" 0 1]
+     ["ddepth" -1 -1]
      ])
 
   (values [_]
@@ -76,7 +78,9 @@
                       (first (values this)))
           ref_proj (calc-projection-cuda
                      @ref_disparity
-                     disparity-to-depth-map)
+                     disparity-to-depth-map
+                     (-> @*params :missing (> 0))
+                     (-> @*params :ddepth (ord -1)))
           disp_core (delay (gpu-to-core @ref_disparity))]
       (map->MatchResults
         {:left          (ref left)
@@ -114,4 +118,6 @@
         :p2              120
         :uniqueness      5
         :mode            0
+        :missing         0
+        :ddepth          -1
         }))))

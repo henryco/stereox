@@ -114,12 +114,14 @@
   {:static true
    :tag    Ref}
   [^GpuMat disparity
-   ^Mat disparity-to-depth-map]
+   ^Mat disparity-to-depth-map
+   handle
+   ddepth]
   (calc-projection-cpu
     (gpu-to-cv disparity)
     disparity-to-depth-map
-    false
-    -1)
+    (boolean handle)
+    (int ddepth))
   ;(delay
   ;  (let [image_3d_cuda (GpuMat.)]
   ;    (opencv_cudastereo/reprojectImageTo3D

@@ -7,6 +7,8 @@
   (options [_]
     [["num-disparities" 1 16]
      ["block-size" 1 51]
+     ["missing" 0 1]
+     ["ddepth" -1 -1]
      ])
 
   (values [_]
@@ -49,7 +51,9 @@
                       (first (values this)))
           ref_proj (calc-projection-cuda
                      @ref_disparity
-                     disparity-to-depth-map)
+                     disparity-to-depth-map
+                     (-> @*params :missing (> 0))
+                     (-> @*params :ddepth (ord -1)))
           disp_core (delay (gpu-to-core @ref_disparity))]
       (map->MatchResults
         {:left          (ref left)
@@ -84,4 +88,6 @@
      (map->StereoBMProp
        {:num-disparities 1
         :block-size      21
+        :missing         0
+        :ddepth          -1
         }))))
