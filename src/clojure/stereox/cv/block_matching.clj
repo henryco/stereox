@@ -122,7 +122,6 @@
     -1)
   ;(delay
   ;  (let [image_3d_cuda (GpuMat.)]
-  ;    ; TODO FIXME REPLACE WITH Calib3d
   ;    (opencv_cudastereo/reprojectImageTo3D
   ;      disparity
   ;      image_3d_cuda
