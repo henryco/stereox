@@ -24,7 +24,7 @@
 
 (def ^:private *state
   "JavaFX UI state"
-  (atom {:title    "StereoX Pattern Matching configuration"
+  (atom {:title    "StereoX - Stereo Matcher configuration"
          :controls {:matcher [{:id "" :val 0 :min 0 :max 0}]
                     :camera  [{:id "" :val 0 :min 0 :max 0}]}
          :camera   {:viewport {:width 1 :height 1 :min-x 0 :min-y 0}
@@ -176,7 +176,7 @@
                         (str)
                         (.replaceFirst ":"
                                        ""))
-              " ] "))
+              " ] " (:width args) "x" (:height args)))
   (matcher-state-update)
   (camera-state-update)
   (swap! *state assoc-in [:camera :viewport]
