@@ -16,10 +16,6 @@
            (stereox.serialization.calibration CalibrationData))
   (:gen-class))
 
-(defn- to-gray [images]
-  (map #(commons/img-copy % Imgproc/COLOR_BGR2GRAY)
-       images))
-
 (defrecord ConfigParameters
   [^IPersistentCollection ids
    ^IPersistentCollection codec
