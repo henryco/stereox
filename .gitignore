@@ -13,3 +13,6 @@ pom.xml.asc
 /.prepl-port
 .hgignore
 .hg/
+.idea
+.idea/**
+/.idea/

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Leiningen: org.bytedeco/librealsense2:2.50.0-1.5.8">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/bytedeco/librealsense2/2.50.0-1.5.8/librealsense2-2.50.0-1.5.8.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
