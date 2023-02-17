@@ -1,11 +1,11 @@
 (ns stereox.cv.block-matching
   (:import (clojure.lang Atom Ref)
            (org.bytedeco.javacv OpenCVFrameConverter$ToMat OpenCVFrameConverter$ToOrgOpenCvCoreMat)
-           (org.bytedeco.opencv.opencv_core GpuMat Mat Size)
+           (org.bytedeco.opencv.opencv_core GpuMat Mat Size Stream)
            (org.bytedeco.opencv.opencv_cudafilters Filter)
            (org.bytedeco.opencv.opencv_cudastereo StereoSGM)
            (org.bytedeco.opencv.opencv_calib3d StereoSGBM StereoBM StereoMatcher)
-           (org.bytedeco.opencv.global opencv_calib3d opencv_cudastereo opencv_cudafilters opencv_core opencv_cudaimgproc)
+           (org.bytedeco.opencv.global opencv_imgproc opencv_calib3d opencv_cudastereo opencv_cudafilters opencv_core opencv_cudaimgproc)
            (org.opencv.core CvType)
            (org.opencv.imgproc Imgproc))
   (:require [stereox.utils.iterators :as iter]
@@ -44,16 +44,18 @@
     (.download mat cv_mat)
     cv_mat))
 
+(defn- cv-to-gpu
+  {:static true
+   :tag    GpuMat}
+  [^Mat mat]
+  (-> mat
+      (cv-to-core)
+      (core-to-gpu)))
+
 (defn- gpu-to-core
   {:static true}
   [^GpuMat mat]
   (cv-to-core (gpu-to-cv mat)))
-
-(defn- gpu-blur
-  {:static true :tag GpuMat}
-  [^GpuMat in ^Filter filter]
-  (.apply filter in in)
-  in)
 
 (defn- gpu-img-copy
   "Copy image matrix, optionally apply color change.
