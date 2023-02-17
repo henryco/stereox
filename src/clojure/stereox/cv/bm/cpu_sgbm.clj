@@ -34,6 +34,9 @@
      ; MODE_SGBM = 0 MODE_HH = 1 MODE_SGBM_3WAY = 2 MODE_HH4 = 3
      ["missing" 0 1]
      ["ddepth" -1 -1]
+     ["kernel" 0 8]
+     ["sigma-1" 0 5]
+     ["sigma-2" 0 5]
      ])
 
   (values [_]

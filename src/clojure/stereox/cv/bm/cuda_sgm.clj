@@ -22,6 +22,9 @@
      ; MODE_HH = 1 MODE_HH4 = 3 : {0 1 1 3}
      ["missing" 0 1]
      ["ddepth" -1 -1]
+     ["kernel" 0 8]
+     ["sigma-1" 0 5]
+     ["sigma-2" 0 5]
      ])
 
   (values [_]
@@ -69,31 +72,38 @@
     @*params)
 
   (compute [this [left right]]
-    (let [ref_disparity (delay (calc-disparity-cuda
-                                 (commons/img-copy left Imgproc/COLOR_BGR2GRAY)
-                                 (commons/img-copy right Imgproc/COLOR_BGR2GRAY)
+    (let [cuda_l (delay (gpu-img-copy (core-to-gpu left)
+                                      Imgproc/COLOR_BGR2GRAY))
+          cuda_r (delay (gpu-img-copy (core-to-gpu right)
+                                      Imgproc/COLOR_BGR2GRAY))
+          ref_disparity (delay (calc-disparity-cuda
+                                 @cuda_l
+                                 @cuda_r
                                  @*matcher))
           ref_depth (delay (calc-depth-cuda
                              @ref_disparity
-                             (first (values this))))
+                             (second (values this))))
           ref_proj (delay (calc-projection-cuda
                             @ref_disparity
                             disparity-to-depth-map
                             (-> @*params :missing (> 0))
-                            (-> @*params :ddepth (ord -1))))
-          disp_core (delay (gpu-to-core @ref_disparity))]
+                            (-> @*params :ddepth (ord -1))))]
       (map->MatchResults
-        {:left          (ref left)
-         :right         (ref right)
-         :disparity     disp_core
-         :depth         ref_depth
-         :disparity_bgr (delay (commons/img-copy
-                                 @disp_core
-                                 Imgproc/COLOR_GRAY2BGR))
-         :depth_bgr     (delay (commons/img-copy
-                                 (gpu-to-core @ref_depth)
-                                 Imgproc/COLOR_BGRA2BGR))
-         ;:projection    (delay (gpu-to-core @ref_proj))
+        {:depth         ref_depth
+         :disparity     (delay (gpu-to-core @ref_disparity))
+         :left          (delay (gpu-to-core
+                                 (gpu-img-copy @cuda_l
+                                               Imgproc/COLOR_GRAY2BGR)))
+         :right         (delay (gpu-to-core
+                                 (gpu-img-copy @cuda_r
+                                               Imgproc/COLOR_GRAY2BGR)))
+         :disparity_bgr (delay (gpu-to-core
+                                 (gpu-img-copy @ref_disparity
+                                               Imgproc/COLOR_GRAY2BGR
+                                               CvType/CV_16U)))
+         :depth_bgr     (delay (gpu-to-core
+                                 (gpu-img-copy @ref_depth
+                                               Imgproc/COLOR_BGRA2BGR)))
          :projection    (delay (cv-to-core @ref_proj))
          })))
   )

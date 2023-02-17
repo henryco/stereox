@@ -9,6 +9,9 @@
      ["block-size" 5 500]
      ["missing" 0 1]
      ["ddepth" -1 -1]
+     ["kernel" 0 8]
+     ["sigma-1" 0 5]
+     ["sigma-2" 0 5]
      ])
 
   (values [_]

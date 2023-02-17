@@ -92,7 +92,6 @@
       (contains? #{:disparity_bgr :disparity :depth_bgr :depth :projection :left :right} mode)
       (throw (Exception. (str "No such computation type: " mode))))
     (let [captured (camera/capture (:camera @*state))
-          ; TODO DE NOISE
           rectified (nrm/rectify (:normalizer @*state) captured)
           computed (bm/compute (:block-matcher @*state) rectified)]
       (->Frame captured rectified (deref (get computed mode)))))

@@ -1,10 +1,12 @@
 (ns stereox.cv.block-matching
   (:import (clojure.lang Atom Ref)
            (org.bytedeco.javacv OpenCVFrameConverter$ToMat OpenCVFrameConverter$ToOrgOpenCvCoreMat)
-           (org.bytedeco.opencv.opencv_core GpuMat Mat)
+           (org.bytedeco.opencv.opencv_core GpuMat Mat Size)
+           (org.bytedeco.opencv.opencv_cudafilters Filter)
            (org.bytedeco.opencv.opencv_cudastereo StereoSGM)
            (org.bytedeco.opencv.opencv_calib3d StereoSGBM StereoBM StereoMatcher)
-           (org.bytedeco.opencv.global opencv_calib3d opencv_cudastereo)
+           (org.bytedeco.opencv.global opencv_calib3d opencv_cudastereo opencv_cudafilters opencv_core opencv_cudaimgproc)
+           (org.opencv.core CvType)
            (org.opencv.imgproc Imgproc))
   (:require [stereox.utils.iterators :as iter]
             [stereox.utils.commons :as commons])
@@ -47,6 +49,29 @@
   [^GpuMat mat]
   (cv-to-core (gpu-to-cv mat)))
 
+(defn- gpu-blur
+  {:static true :tag GpuMat}
+  [^GpuMat in ^Filter filter]
+  (.apply filter in in)
+  in)
+
+(defn- gpu-img-copy
+  "Copy image matrix, optionally apply color change.
+  e.g. code:  Imgproc/COLOR_BGR2GRAY
+       rtype: CvType/CV_8U"
+  {:tag    GpuMat
+   :static true}
+  ([^GpuMat image ^Integer code]
+   (let [output (GpuMat.)]
+     (opencv_cudaimgproc/cvtColor image output code)
+     output))
+  ([^GpuMat image ^Integer code ^Integer rtype]
+   (let [output (GpuMat.)
+         cpy (GpuMat.)]
+     (.convertTo image cpy rtype)
+     (opencv_cudaimgproc/cvtColor cpy output code)
+     output)))
+
 (defn- ord
   "Returns original value if not nil,
   otherwise return default value"
@@ -87,11 +112,11 @@
 (defn- calc-disparity-cuda
   {:static true
    :tag    Ref}
-  [left right ^StereoMatcher matcher]
+  [^GpuMat left ^GpuMat right ^StereoMatcher matcher]
   (let [disp_cuda_mat (GpuMat.)]
     (.compute ^StereoMatcher matcher
-              ^GpuMat (core-to-gpu left)
-              ^GpuMat (core-to-gpu right)
+              ^GpuMat left
+              ^GpuMat right
               ^GpuMat disp_cuda_mat)
     disp_cuda_mat))
 

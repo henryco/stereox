@@ -21,6 +21,11 @@
    (let [output (Mat.)]
      (Imgproc/cvtColor image output code)
      output))
+  ([^Mat image ^Integer code ^Integer rtype]
+   (let [output (Mat.) cpy (Mat.)]
+     (.convertTo image cpy rtype)
+     (Imgproc/cvtColor cpy output code)
+     output))
   ([^Mat image]
    (let [output (Mat.)]
      (.copyTo image
