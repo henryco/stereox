@@ -85,11 +85,18 @@
   [^Mat matrix]
   (let [conv_1 (new JavaFXFrameConverter)
         conv_2 (new OpenCVFrameConverter$ToOrgOpenCvCoreMat)
-        mat (new Mat)]
-    (.convertTo matrix mat CvType/CV_8U)
-    (->> mat
-         (.convert conv_2)
-         (.convert conv_1))))
+        r_type (.type matrix)]
+    (if (some #(= % r_type)
+              [CvType/CV_8U CvType/CV_8UC1 CvType/CV_8UC2
+               CvType/CV_8UC3 CvType/CV_8UC4])
+      (->> matrix
+           (.convert conv_2)
+           (.convert conv_1))
+      (let [mat (new Mat)]
+        (.convertTo matrix mat CvType/CV_8U)
+        (->> mat
+             (.convert conv_2)
+             (.convert conv_1))))))
 
 (defn- main-cb-loop []
   (let [frame (logic/render-frame @*logic (-> @*state :mode (keyword)))
