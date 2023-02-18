@@ -403,12 +403,12 @@
             rectification_map2 (Mat.)
             disp_to_depth_mtx (Mat.)
 
-            fixed_dsp_dpt_mtx (let [m (Mat.)]
-                                (.push_back m (MatOfFloat4. (float-array [1 0 0 (* -0.5 (.width img_size))])))
-                                (.push_back m (MatOfFloat4. (float-array [0 -1 0 (* 0.5 (.height img_size))])))
-                                (.push_back m (MatOfFloat4. (float-array [0 0 0 (* -0.8 (.width img_size))])))
-                                (.push_back m (MatOfFloat4. (float-array [0 0 1 0])))
-                                m)
+            fixed_dsp_dpt_mtx (doto (Mat. 4 4 CvType/CV_64F)
+                                (.put 0 0 (double-array
+                                            (flatten [[1 0 0 (* -0.5 (.width img_size))]
+                                                      [0 -1 0 (* 0.5 (.height img_size))]
+                                                      [0 0 0 (* -0.8 (.width img_size))]
+                                                      [0 0 1 0]]))))
 
             pair [{:id                (:id left)
                    :cam_mtx           cam_mtx1
