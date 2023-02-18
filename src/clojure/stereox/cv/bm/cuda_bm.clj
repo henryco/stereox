@@ -10,6 +10,9 @@
      ["block-size" 1 51]
      ["iterations" 0 5]
      ["radius" 3 64]
+     ["edge-threshold" 0 1000]
+     ["disp-threshold" 0 1000]
+     ["sigma-range" 0 1000]
      ["missing" 0 1]
      ["ddepth" -1 -1]
      ])
@@ -19,12 +22,20 @@
      (max 5 (to-odd (int (:block-size @*params))))
      (max 3 (int (:radius @*params)))
      (max 0 (int (:iterations @*params)))
+     (max 0 (float (* 0.01 (:edge-threshold @*params))))
+     (max 0 (float (* 0.01 (:disp-threshold @*params))))
+     (max 0 (float (* 0.1 (:sigma-range @*params))))
      ])
 
   (setup [this]
-    (let [[n b r i] (values this)
+    (let [[n b r i e d s] (values this)
           d_filter (if (> i 0) (opencv_cudastereo/createDisparityBilateralFilter n r i) nil)
           matcher (opencv_cudastereo/createStereoBM n b)]
+      (if (some? d_filter)
+        (do (.setEdgeThreshold d_filter e)
+            (.setMaxDiscThreshold d_filter d)
+            (.setSigmaRange d_filter s)
+            ))
       (reset! *dsp-filter d_filter)
       (reset! *matcher matcher)))
 
@@ -101,4 +112,7 @@
         :ddepth          -1
         :radius          3
         :iterations      0
+        :edge-threshold  1
+        :disp-threshold  2
+        :sigma-range     100
         }))))
