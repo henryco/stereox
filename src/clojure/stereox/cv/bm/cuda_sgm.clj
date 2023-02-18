@@ -43,7 +43,22 @@
                       (iter/>>> vals)
                       (iter/>>> vals)
                       (iter/>>> vals))
-          algorithm (StereoSGM. algorithm)]
+          algorithm (StereoSGM. algorithm)
+
+          min_disp (.getMinDisparity algorithm)
+          num_disp (.getNumDisparities algorithm)
+          r-matcher (opencv_cudastereo/createStereoSGM)]
+      (.setMinDisparity r-matcher (- 1 (+ min_disp num_disp)))
+      (.setNumDisparities r-matcher num_disp)
+      (.setUniquenessRatio r-matcher 0)
+      (.setBlockSize r-matcher (.getBlockSize algorithm))
+      (.setP1 r-matcher (.getP1 algorithm))
+      (.setP2 r-matcher (.getP2 algorithm))
+      (.setMode r-matcher (.getMode algorithm))
+      (.setPreFilterCap r-matcher (.getPreFilterCap algorithm))
+      (.setDisp12MaxDiff r-matcher 1000000)
+      (.setSpeckleWindowSize r-matcher 0)
+
       (reset! *matcher algorithm)))
 
   (setup [this m]

@@ -5,7 +5,7 @@
            (org.bytedeco.opencv.opencv_cudafilters Filter)
            (org.bytedeco.opencv.opencv_cudastereo StereoSGM)
            (org.bytedeco.opencv.opencv_calib3d StereoSGBM StereoBM StereoMatcher)
-           (org.bytedeco.opencv.global opencv_imgproc opencv_calib3d opencv_cudastereo opencv_cudafilters opencv_core opencv_cudaimgproc)
+           (org.bytedeco.opencv.global opencv_imgproc opencv_calib3d opencv_cudastereo opencv_cudafilters opencv_core opencv_cudaimgproc opencv_ximgproc)
            (org.opencv.core CvType)
            (org.opencv.imgproc Imgproc))
   (:require [stereox.utils.iterators :as iter]

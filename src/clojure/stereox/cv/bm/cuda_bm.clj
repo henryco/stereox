@@ -2,11 +2,14 @@
 
 (deftype CudaStereoBM [^Atom *params
                        ^Atom *matcher
+                       ^Atom *dsp-filter
                        ^Mat disparity-to-depth-map]
   BlockMatcher
   (options [_]
     [["num-disparities" 1 16]
      ["block-size" 1 51]
+     ["radius" 3 64]
+     ["iterations" 0 5]
      ["missing" 0 1]
      ["ddepth" -1 -1]
      ])
@@ -14,11 +17,16 @@
   (values [_]
     [(* 16 (int (:num-disparities @*params)))
      (max 5 (to-odd (int (:block-size @*params))))
+     (max 3 (int (:radius @*params)))
+     (max 0 (int (:iterations @*params)))
      ])
 
   (setup [this]
-    (let [[n b] (values this)]
-      (reset! *matcher (opencv_cudastereo/createStereoBM n b))))
+    (let [[n b r i] (values this)
+          d_filter (if (> i 0) (opencv_cudastereo/createDisparityBilateralFilter n r i) nil)
+          matcher (opencv_cudastereo/createStereoBM n b)]
+      (reset! *dsp-filter d_filter)
+      (reset! *matcher matcher)))
 
   (setup [this m]
     (dosync
@@ -43,17 +51,19 @@
     (map->StereoBMProp @*params))
 
   (compute [this [left right]]
-    (let [cuda_l (delay (gpu-img-copy (core-to-gpu left)
-                                      Imgproc/COLOR_BGR2GRAY))
-          cuda_r (delay (gpu-img-copy (core-to-gpu right)
-                                      Imgproc/COLOR_BGR2GRAY))
-          ref_disparity (delay (calc-disparity-cuda
-                                 @cuda_l
-                                 @cuda_r
-                                 @*matcher))
+    (let [props (values this)
+          cuda_l (future (gpu-img-copy (core-to-gpu left) Imgproc/COLOR_BGR2GRAY))
+          cuda_r (future (gpu-img-copy (core-to-gpu right) Imgproc/COLOR_BGR2GRAY))
+          ref_disparity (delay (let [disp (calc-disparity-cuda @cuda_l @cuda_r @*matcher)
+                                     filter @*dsp-filter]
+                                 (if (and (> (nth props 3) 0)
+                                          (some? filter))
+                                   (do (.apply filter disp @cuda_l disp)
+                                       (.apply filter disp @cuda_r disp)))
+                                 disp))
           ref_depth (delay (calc-depth-cuda
                              @ref_disparity
-                             (first (values this))))
+                             (first props)))
           ref_proj (delay (calc-projection-cuda
                             @ref_disparity
                             disparity-to-depth-map
@@ -77,6 +87,7 @@
     ^StereoBMProp props]
    (let [matcher (->CudaStereoBM (atom (map->StereoBMProp props))
                                  (atom nil)
+                                 (atom nil)
                                  (core-to-cv disparity-to-depth-map))]
      (setup matcher)
      matcher))
@@ -88,4 +99,6 @@
         :block-size      21
         :missing         0
         :ddepth          -1
+        :radius          3
+        :iterations      0
         }))))
