@@ -8,6 +8,7 @@
   (:import (clojure.lang Keyword)
            (java.io ByteArrayInputStream)
            (javafx.scene.image Image)
+           (jstereox BetterFxFrameConverter)
            (org.bytedeco.javacv JavaFXFrameConverter OpenCVFrameConverter$ToOrgOpenCvCoreMat)
            (org.opencv.core CvType Mat)
            (org.opencv.imgproc Imgproc)
@@ -83,29 +84,25 @@
   {:tag    Image
    :static true}
   [^Mat matrix]
-  (try
-    (let [conv_1 (new JavaFXFrameConverter)
-          conv_2 (new OpenCVFrameConverter$ToOrgOpenCvCoreMat)
-          r_type (.type matrix)]
-      (if (some #(= % r_type)
-                [CvType/CV_8U CvType/CV_8UC1 CvType/CV_8UC2
-                 CvType/CV_8UC3 CvType/CV_8UC4])
-        (->> matrix
+  (let [conv_1 (new BetterFxFrameConverter)
+        ;conv_1 (new JavaFXFrameConverter)
+        conv_2 (new OpenCVFrameConverter$ToOrgOpenCvCoreMat)
+        r_type (.type matrix)]
+    (if (some #(= % r_type)
+              [CvType/CV_8U CvType/CV_8UC1 CvType/CV_8UC2
+               CvType/CV_8UC3 CvType/CV_8UC4])
+      (->> matrix
+           (.convert conv_2)
+           (.convert conv_1))
+      (let [mat (new Mat)]
+        (.convertTo matrix mat CvType/CV_8U)
+        (->> mat
              (.convert conv_2)
-             (.convert conv_1))
-        (let [mat (new Mat)]
-          (.convertTo matrix mat CvType/CV_8U)
-          (->> mat
-               (.convert conv_2)
-               (.convert conv_1)))))
-    (catch Exception e (.printStackTrace e))
-    )
-
-  )
+             (.convert conv_1))))))
 
 (defn- main-cb-loop []
   (let [frame (logic/render-frame @*logic (-> @*state :mode (keyword)))
-        image (matrix-to-image (:disparity frame))]
+        image (matrix-to-image frame)]
     (if (some? image)
       (swap! *state assoc-in [:camera :image] image))))
 

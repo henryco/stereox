@@ -48,6 +48,7 @@
           min_disp (.getMinDisparity algorithm)
           num_disp (.getNumDisparities algorithm)
           r-matcher (opencv_cudastereo/createStereoSGM)]
+
       (.setMinDisparity r-matcher (- 1 (+ min_disp num_disp)))
       (.setNumDisparities r-matcher num_disp)
       (.setUniquenessRatio r-matcher 0)

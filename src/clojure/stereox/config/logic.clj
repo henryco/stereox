@@ -32,11 +32,6 @@
    ^BlockMatcher block-matcher
    ^StereoCamera camera])
 
-(defrecord Frame
-  [^IPersistentCollection captured
-   ^IPersistentCollection rectified
-   ^Mat disparity])
-
 (defprotocol ConfigurationLogic
   "Configuration logic interface"
 
@@ -62,7 +57,7 @@
     Params:
       mode - [:disparity_bgr|:disparity|:depth_bgr|:depth|:projection|:left|:right]
     Returns:
-      Frame")
+      Mat")
 
   (save-settings [_]
     "Save camera and block matcher settings")
@@ -94,7 +89,7 @@
     (let [captured (camera/capture (:camera @*state))
           rectified (nrm/rectify (:normalizer @*state) captured)
           computed (bm/compute (:block-matcher @*state) rectified)]
-      (->Frame captured rectified (deref (get computed mode)))))
+      (deref (get computed mode))))
 
   (save-settings [_]
     ; TODO

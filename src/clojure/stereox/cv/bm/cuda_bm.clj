@@ -8,8 +8,8 @@
   (options [_]
     [["num-disparities" 1 16]
      ["block-size" 1 51]
-     ["radius" 3 64]
      ["iterations" 0 5]
+     ["radius" 3 64]
      ["missing" 0 1]
      ["ddepth" -1 -1]
      ])
