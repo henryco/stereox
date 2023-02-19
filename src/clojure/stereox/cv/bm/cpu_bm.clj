@@ -5,22 +5,54 @@
                       ^Mat disparity-to-depth-map]
   BlockMatcher
   (options [_]
-    [["num-disparities" 0 100]
-     ["block-size" 5 500]
-     ["missing" 0 1]
-     ["ddepth" -1 -1]
-     ["kernel" 0 8]
-     ["sigma-1" 0 5]
-     ["sigma-2" 0 5]
+    [; STEREO MATCHER
+     ["num-disparities" 1 16 #(-> % int (* 16))]
+     ["block-size" 5 51 #(-> % int to-odd)]
+     ["min-disparity" 0 100 #(-> % int)]
+     ["speckle-window-size" 0 100 #(-> % int)]
+     ["speckle-range" 0 100 #(-> % int)]
+     ["disparity-max-diff" 0 100 #(-> % int)]
+     ; STEREO BM 6
+     ["pre-filter-type" 0 1 #(-> % int)]
+     ["pre-filter-size" 0 100 #(-> % int)]
+     ["pre-filter-cap" 0 100 #(-> % int)]
+     ["texture-threshold" 0 100 #(-> % int)]
+     ["uniqueness" 0 100 #(-> % int)]
+     ["smaller-block" 0 100 #(-> % int)]
+     ; FILTER 12 TODO
+
+     ; PROJECTION 17
+     ["missing" 0 1 #(-> % int)]
+     ["ddepth" -1 -1 #(-> % int)]
+     ["disp-to-depth-type" 0 1 #(-> % int)]
      ])
 
-  (values [_]
-    [(* 16 (int (:num-disparities @*params)))
-     (max 5 (to-odd (int (:block-size @*params))))])
+  (values [this]
+    (let [p @*params]
+      (vec (map (fn [[name min max validator]]
+                  (validator (clamp (get p (keyword name) min) min max)))
+                (options this)))))
 
   (setup [this]
-    (let [[a b] (values this)]
-      (reset! *matcher (StereoBM/create a b))))
+    (let [val_arr (values this)
+          iterator (iter/->Iterator (values this))
+          matcher (StereoBM/create)]
+      (doto ^StereoMatcher matcher
+        (.setNumDisparities (iter/>>> iterator))
+        (.setBlockSize (iter/>>> iterator))
+        (.setMinDisparity (iter/>>> iterator))
+        (.setSpeckleWindowSize (iter/>>> iterator))
+        (.setSpeckleRange (iter/>>> iterator))
+        (.setDisp12MaxDiff (iter/>>> iterator)))
+      (doto ^StereoBM matcher
+        (.setPreFilterType (iter/>>> iterator))
+        (.setPreFilterSize (iter/>>> iterator))
+        (.setPreFilterCap (iter/>>> iterator))
+        (.setTextureThreshold (iter/>>> iterator))
+        (.setUniquenessRatio (iter/>>> iterator))
+        (.setSmallerBlockSize (iter/>>> iterator)))
+      ; TODO: FILTER
+      (reset! *matcher matcher)))
 
   (setup [this m]
     (dosync
@@ -52,7 +84,8 @@
           core_disp (delay (cv-to-core @ref_disparity))
           core_disp_bgr (delay (commons/img-copy
                                  @core_disp
-                                 Imgproc/COLOR_GRAY2BGR))]
+                                 Imgproc/COLOR_GRAY2BGR
+                                 CvType/CV_16U))]
       (map->MatchResults
         {:left          (ref left)
          :right         (ref right)
@@ -82,8 +115,23 @@
    (create-cpu-stereo-bm
      disparity-to-depth-map
      (map->StereoBMProp
-       {:num-disparities 1
-        :block-size      21
-        :missing         0
-        :ddepth          -1
+       {; STEREO MATCHER
+        :num-disparities     1
+        :block-size          21
+        :min-disparity       0
+        :speckle-window-size 0
+        :speckle-range       0
+        :disparity-max-diff  0
+        ; STEREO BM
+        :pre-filter-type     0
+        :pre-filter-size     9
+        :pre-filter-cap      31
+        :texture-threshold   3
+        :uniqueness          0
+        :smaller-block       0
+        ; FILTER TODO
+
+        ; PROJECTION
+        :missing             0
+        :ddepth              -1
         }))))

@@ -102,7 +102,8 @@
     (.compute matcher
               (core-to-cv left)
               (core-to-cv right)
-              disparity)))
+              disparity)
+    disparity))
 
 (defn- calc-projection-cpu
   {:static true

@@ -14,7 +14,8 @@
 
 (defn img-copy
   "Copy image matrix, optionally apply color change.
-  e.g. code: Imgproc/COLOR_BGR2GRAY"
+  e.g. code: Imgproc/COLOR_BGR2GRAY
+       type: CvType/CV_16U"
   {:tag    Mat
    :static true}
   ([^Mat image ^Integer code]

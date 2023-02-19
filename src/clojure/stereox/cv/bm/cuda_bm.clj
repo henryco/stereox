@@ -8,7 +8,7 @@
   (options [_]
     [; STEREO MATCHER
      ["num-disparities" 1 16 #(-> % int (* 16))]
-     ["block-size" 1 51 #(-> % int to-odd)]
+     ["block-size" 5 51 #(-> % int to-odd)]
      ["min-disparity" 0 100 #(-> % int)]
      ["speckle-window-size" 0 100 #(-> % int)]
      ["speckle-range" 0 100 #(-> % int)]
@@ -36,9 +36,7 @@
     (let [p @*params]
       (vec (map (fn [[name min max validator]]
                   (validator (clamp (get p (keyword name) min) min max)))
-                (options this)))
-      )
-    )
+                (options this)))))
 
   (setup [this]
     (let [val_arr (values this)
