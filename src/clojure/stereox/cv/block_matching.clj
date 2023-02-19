@@ -3,7 +3,7 @@
            (org.bytedeco.javacv OpenCVFrameConverter$ToMat OpenCVFrameConverter$ToOrgOpenCvCoreMat)
            (org.bytedeco.opencv.opencv_core GpuMat Mat Size Stream)
            (org.bytedeco.opencv.opencv_cudafilters Filter)
-           (org.bytedeco.opencv.opencv_cudastereo StereoSGM)
+           (org.bytedeco.opencv.opencv_cudastereo DisparityBilateralFilter StereoSGM)
            (org.bytedeco.opencv.opencv_calib3d StereoSGBM StereoBM StereoMatcher)
            (org.bytedeco.opencv.global opencv_imgproc opencv_calib3d opencv_cudastereo opencv_cudafilters opencv_core opencv_cudaimgproc opencv_ximgproc)
            (org.opencv.core CvType)
@@ -11,6 +11,12 @@
   (:require [stereox.utils.iterators :as iter]
             [stereox.utils.commons :as commons])
   (:gen-class))
+
+(defn- clamp
+  "Constrain a value to lie between two further values"
+  {:static true}
+  [value $min$ $max$]
+  (min $max$ (max $min$ value)))
 
 (defn- core-to-cv
   {:static true

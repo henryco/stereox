@@ -6,36 +6,68 @@
                        ^Mat disparity-to-depth-map]
   BlockMatcher
   (options [_]
-    [["num-disparities" 1 16]
-     ["block-size" 1 51]
-     ["iterations" 0 5]
-     ["radius" 3 64]
-     ["edge-threshold" 0 1000]
-     ["disp-threshold" 0 1000]
-     ["sigma-range" 0 1000]
-     ["missing" 0 1]
-     ["ddepth" -1 -1]
+    [; STEREO MATCHER
+     ["num-disparities" 1 16 #(-> % int (* 16))]
+     ["block-size" 1 51 #(-> % int to-odd)]
+     ["min-disparity" 0 100 #(-> % int)]
+     ["speckle-window-size" 0 100 #(-> % int)]
+     ["speckle-range" 0 100 #(-> % int)]
+     ["disparity-max-diff" 0 100 #(-> % int)]
+     ; STEREO BM 6
+     ["pre-filter-type" 0 2 #(-> % int (- 1))]
+     ["pre-filter-size" 0 100 #(-> % int)]
+     ["pre-filter-cap" 0 100 #(-> % int)]
+     ["texture-threshold" 0 100 #(-> % int)]
+     ["uniqueness" 0 100 #(-> % int)]
+     ["smaller-block" 0 100 #(-> % int)]
+     ; FILTER 12
+     ["iterations" 0 5 #(-> % int)]
+     ["radius" 3 64 #(-> % int)]
+     ["edge-threshold" 0 1000 #(-> % float (* 0.01))]
+     ["disp-threshold" 0 1000 #(-> % float (* 0.01))]
+     ["sigma-range" 0 1000 #(-> % float (* 0.1))]
+     ; PROJECTION 17
+     ["missing" 0 1 #(-> % int)]
+     ["ddepth" -1 -1 #(-> % int)]
+     ["disp-to-depth-type" 0 1 #(-> % int)]
      ])
 
-  (values [_]
-    [(* 16 (int (:num-disparities @*params)))
-     (max 5 (to-odd (int (:block-size @*params))))
-     (max 3 (int (:radius @*params)))
-     (max 0 (int (:iterations @*params)))
-     (max 0 (float (* 0.01 (:edge-threshold @*params))))
-     (max 0 (float (* 0.01 (:disp-threshold @*params))))
-     (max 0 (float (* 0.1 (:sigma-range @*params))))
-     ])
+  (values [this]
+    (let [p @*params]
+      (vec (map (fn [[name min max validator]]
+                  (validator (clamp (get p (keyword name) min) min max)))
+                (options this)))
+      )
+    )
 
   (setup [this]
-    (let [[n b r i e d s] (values this)
-          d_filter (if (> i 0) (opencv_cudastereo/createDisparityBilateralFilter n r i) nil)
-          matcher (opencv_cudastereo/createStereoBM n b)]
+    (let [val_arr (values this)
+          iterator (iter/->Iterator (values this))
+          d_filter (if (< 0 (nth val_arr 12))
+                     (opencv_cudastereo/createDisparityBilateralFilter) nil)
+          matcher (opencv_cudastereo/createStereoBM)]
+      (doto ^StereoMatcher matcher
+        (.setNumDisparities (iter/>>> iterator))
+        (.setBlockSize (iter/>>> iterator))
+        (.setMinDisparity (iter/>>> iterator))
+        (.setSpeckleWindowSize (iter/>>> iterator))
+        (.setSpeckleRange (iter/>>> iterator))
+        (.setDisp12MaxDiff (iter/>>> iterator)))
+      (doto ^StereoBM matcher
+        (.setPreFilterType (iter/>>> iterator))
+        (.setPreFilterSize (iter/>>> iterator))
+        (.setPreFilterCap (iter/>>> iterator))
+        (.setTextureThreshold (iter/>>> iterator))
+        (.setUniquenessRatio (iter/>>> iterator))
+        (.setSmallerBlockSize (iter/>>> iterator)))
       (if (some? d_filter)
-        (do (.setEdgeThreshold d_filter e)
-            (.setMaxDiscThreshold d_filter d)
-            (.setSigmaRange d_filter s)
-            ))
+        (doto ^DisparityBilateralFilter d_filter
+          (.setNumDisparities (nth val_arr 0))
+          (.setNumIters (iter/>>> iterator))
+          (.setRadius (iter/>>> iterator))
+          (.setEdgeThreshold (iter/>>> iterator))
+          (.setMaxDiscThreshold (iter/>>> iterator))
+          (.setSigmaRange (iter/>>> iterator))))
       (reset! *dsp-filter d_filter)
       (reset! *matcher matcher)))
 
@@ -106,13 +138,27 @@
    (create-cuda-stereo-bm
      disparity-to-depth-map
      (map->StereoBMProp
-       {:num-disparities 1
-        :block-size      21
-        :missing         0
-        :ddepth          -1
-        :radius          3
-        :iterations      0
-        :edge-threshold  1
-        :disp-threshold  2
-        :sigma-range     100
+       {; STEREO MATCHER
+        :num-disparities     1
+        :block-size          21
+        :min-disparity       0
+        :speckle-window-size 0
+        :speckle-range       0
+        :disparity-max-diff  0
+        ; STEREO BM
+        :pre-filter-type     0
+        :pre-filter-size     9
+        :pre-filter-cap      31
+        :texture-threshold   3
+        :uniqueness          0
+        :smaller-block       0
+        ; FILTER
+        :iterations          0
+        :radius              3
+        :edge-threshold      10
+        :disp-threshold      20
+        :sigma-range         100
+        ; PROJECTION
+        :missing             0
+        :ddepth              -1
         }))))

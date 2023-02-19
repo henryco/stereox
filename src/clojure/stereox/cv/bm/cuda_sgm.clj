@@ -16,6 +16,13 @@
   (options [_]
     [["min-disparity" 0 256]
      ["num-disparities" 0 2]
+
+     ["smaller-block" 0 100]
+     ["pre-filter-type" 0 2]
+     ["pre-filter-size" 0 100]
+     ["pre-filter-cap" 0 100]
+     ["texture-threshold" 0 100]
+
      ["iterations" 0 5]
      ["radius" 3 64]
      ["edge-threshold" 0 1000]
@@ -44,32 +51,44 @@
      (max 0 (float (* 0.01 (:edge-threshold @*params))))
      (max 0 (float (* 0.01 (:disp-threshold @*params))))
      (max 0 (float (* 0.1 (:sigma-range @*params))))
+     (max 0 (int (:pre-filter-cap @*params)))
      ])
 
   (setup [this]
-    (let [vals (iter/->Iterator (values this))
-          algorithm (opencv_cudastereo/createStereoSGM
-                      (iter/>>> vals)
-                      (iter/>>> vals)
-                      (iter/>>> vals)
-                      (iter/>>> vals)
-                      (iter/>>> vals)
-                      (iter/>>> vals))
-          algorithm (StereoSGM. algorithm)
+    (let [[min_disparity
+           num_disparities
+           p1
+           p2
+           uniqueness
+           mode
+           radius
+           iterations
+           edge-threshold
+           disp-threshold
+           sigma-range
+           pre-filter-cap
+           ] (values this)
+          matcher (opencv_cudastereo/createStereoSGM)
 
-          ;min_disp (.getMinDisparity algorithm)
-          num_disp (.getNumDisparities algorithm)
-          ;r-matcher (opencv_cudastereo/createStereoSGM)
-
-          r (iter/>>> vals)
-          i (iter/>>> vals)
-          d_filter (if (> i 0) (opencv_cudastereo/createDisparityBilateralFilter num_disp r i) nil)
-          ]
+          d_filter (if (> iterations 0)
+                     (opencv_cudastereo/createDisparityBilateralFilter
+                       num_disparities radius iterations)
+                     nil)]
       (if (some? d_filter)
-        (do (.setEdgeThreshold d_filter (iter/>>> vals))
-            (.setMaxDiscThreshold d_filter (iter/>>> vals))
-            (.setSigmaRange d_filter (iter/>>> vals))
+        (do (.setEdgeThreshold d_filter edge-threshold)
+            (.setMaxDiscThreshold d_filter disp-threshold)
+            (.setSigmaRange d_filter sigma-range)
             ))
+
+      (doto matcher
+        (.setMinDisparity min_disparity)
+        (.setNumDisparities num_disparities)
+        (.setP1 p1)
+        (.setP2 p2)
+        (.setUniquenessRatio uniqueness)
+        (.setMode mode)
+        (.setPreFilterCap pre-filter-cap)
+        )
 
       ;(.setMinDisparity r-matcher (- 1 (+ min_disp num_disp)))
       ;(.setNumDisparities r-matcher num_disp)
@@ -83,7 +102,7 @@
       ;(.setSpeckleWindowSize r-matcher 0)
 
       (reset! *dsp-filter d_filter)
-      (reset! *matcher algorithm)))
+      (reset! *matcher matcher)))
 
   (setup [this m]
     (dosync
@@ -163,4 +182,7 @@
         :edge-threshold  1
         :disp-threshold  2
         :sigma-range     100
+        :smaller-block     0
+        :pre-filter-cap    31
+        :texture-threshold 3
         }))))
