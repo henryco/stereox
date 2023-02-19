@@ -145,6 +145,8 @@
                                            {:fx/type matcher-parameters
                                             :matcher (-> state :controls :matcher)}
                                            {:fx/type v-separator}
+                                           {:fx/type :separator}
+                                           {:fx/type v-separator}
                                            {:fx/type camera-parameters
                                             :camera  (-> state :controls :camera)}
                                            {:fx/type v-separator}
