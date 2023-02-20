@@ -1,12 +1,24 @@
 (in-ns 'stereox.cv.block-matching)
 
 (defrecord StereoSGMProp
-  [^Integer min-disparity
-   ^Integer num-disparities
+  [^Integer num-disparities
+   ^Integer block-size
+   ^Integer min-disparity
+   ^Integer speckle-window-size
+   ^Integer speckle-range
+   ^Integer disparity-max-diff
+   ^Integer pre-filter-cap
+   ^Integer uniqueness
    ^Integer p1
    ^Integer p2
-   ^Integer uniqueness
-   ^Integer mode])
+   ^Integer mode
+   ^Integer iterations
+   ^Integer radius
+   ^Integer missing
+   ^Integer ddepth
+   ^Float edge-threshold
+   ^Float disp-threshold
+   ^Float sigma-range])
 
 (deftype CudaStereoSGM [^Atom *params
                         ^Atom *matcher
@@ -14,105 +26,64 @@
                         ^Mat disparity-to-depth-map]
   BlockMatcher
   (options [_]
-    [; STEREO MATCHER
-     ["num-disparities" 0 2 #(-> % int (* 16))]
+    [; STEREO MATCHER 0
+     ["num-disparities" 0 2 #(->> % int (Math/pow 2) (* 64))]
      ["block-size" 5 51 #(-> % int to-odd)]
      ["min-disparity" 0 256 #(-> % int)]
      ["speckle-window-size" 0 100 #(-> % int)]
      ["speckle-range" 0 100 #(-> % int)]
      ["disparity-max-diff" 0 100 #(-> % int)]
-
-     ["min-disparity" 0 256]
-     ["num-disparities" 0 2]
-
-     ["smaller-block" 0 100]
-     ["pre-filter-type" 0 2]
-     ["pre-filter-size" 0 100]
-     ["pre-filter-cap" 0 100]
-     ["texture-threshold" 0 100]
-
-     ["iterations" 0 5]
-     ["radius" 3 64]
-     ["edge-threshold" 0 1000]
-     ["disp-threshold" 0 1000]
-     ["sigma-range" 0 1000]
-     ["p1" 0 5000]
-     ["p2" 1 5000]
-     ["uniqueness" 0 100]
-     ["mode" 0 1]
-     ; MODE_HH = 1 MODE_HH4 = 3 : {0 1 1 3}
-     ["missing" 0 1]
-     ["ddepth" -1 -1]
+     ;STEREO SGM 6
+     ["pre-filter-cap" 0 100 #(-> % int)]
+     ["uniqueness" 0 100 #(-> % int)]
+     ["p1" 0 5000 #(min (- (int (:p2 @*params)) 1) (int %))]
+     ["p2" 1 5000 #(max (+ (int (:p1 @*params)) 1) (int %))]
+     ["mode" 0 1 #(->> % int (nth [1 3]))]
+     ; FILTER 11
+     ["iterations" 0 5 #(-> % int)]
+     ["radius" 3 64 #(-> % int)]
+     ["edge-threshold" 0 1000 #(-> % float (* 0.01))]
+     ["disp-threshold" 0 1000 #(-> % float (* 0.01))]
+     ["sigma-range" 0 1000 #(-> % float (* 0.1))]
+     ; PROJECTION 16
+     ["missing" 0 1 #(-> % int)]
+     ["ddepth" -1 -1 #(-> % int)]
+     ["disp-to-depth-type" 0 1 #(-> % int)]
      ])
 
   (values [this]
-    [(max 0 (int (:min-disparity @*params)))
-     (get {0 64 1 128 2 256} (int (:num-disparities @*params)) 64)
-     (min (- (int (:p2 @*params)) 1)
-          (int (:p1 @*params)))
-     (max (+ (int (:p1 @*params)) 1)
-          (int (:p2 @*params)))
-     (max 0 (int (:uniqueness @*params)))
-     (get {0 1 1 3} (int (:mode @*params)) 1)
-     (max 3 (int (:radius @*params)))
-     (max 0 (int (:iterations @*params)))
-     (max 0 (float (* 0.01 (:edge-threshold @*params))))
-     (max 0 (float (* 0.01 (:disp-threshold @*params))))
-     (max 0 (float (* 0.1 (:sigma-range @*params))))
-     (max 0 (int (:pre-filter-cap @*params)))
-     ]
     (let [p @*params]
       (vec (map (fn [[name min max validator]]
                   (validator (clamp (get p (keyword name) min) min max)))
                 (options this)))))
 
   (setup [this]
-    (let [[min_disparity
-           num_disparities
-           p1
-           p2
-           uniqueness
-           mode
-           radius
-           iterations
-           edge-threshold
-           disp-threshold
-           sigma-range
-           pre-filter-cap
-           ] (values this)
-          matcher (opencv_cudastereo/createStereoSGM)
-
-          d_filter (if (> iterations 0)
-                     (opencv_cudastereo/createDisparityBilateralFilter
-                       num_disparities radius iterations)
-                     nil)]
+    (let [val_arr (values this)
+          iterator (iter/->Iterator (values this))
+          d_filter (if (< 0 (nth val_arr 11))
+                     (opencv_cudastereo/createDisparityBilateralFilter) nil)
+          matcher (opencv_cudastereo/createStereoSGM)]
+      (doto ^StereoMatcher matcher
+        (.setNumDisparities (iter/>>> iterator))
+        (.setBlockSize (iter/>>> iterator))
+        (.setMinDisparity (iter/>>> iterator))
+        (.setSpeckleWindowSize (iter/>>> iterator))
+        (.setSpeckleRange (iter/>>> iterator))
+        (.setDisp12MaxDiff (iter/>>> iterator)))
+      (doto ^StereoSGM matcher
+        (.setPreFilterCap (iter/>>> iterator))
+        (.setUniquenessRatio (iter/>>> iterator))
+        (.setP1 (iter/>>> iterator))
+        (.setP2 (iter/>>> iterator))
+        (.setMode (iter/>>> iterator)))
       (if (some? d_filter)
-        (do (.setEdgeThreshold d_filter edge-threshold)
-            (.setMaxDiscThreshold d_filter disp-threshold)
-            (.setSigmaRange d_filter sigma-range)
-            ))
-
-      (doto matcher
-        (.setMinDisparity min_disparity)
-        (.setNumDisparities num_disparities)
-        (.setP1 p1)
-        (.setP2 p2)
-        (.setUniquenessRatio uniqueness)
-        (.setMode mode)
-        (.setPreFilterCap pre-filter-cap)
-        )
-
-      ;(.setMinDisparity r-matcher (- 1 (+ min_disp num_disp)))
-      ;(.setNumDisparities r-matcher num_disp)
-      ;(.setUniquenessRatio r-matcher 0)
-      ;(.setBlockSize r-matcher (.getBlockSize algorithm))
-      ;(.setP1 r-matcher (.getP1 algorithm))
-      ;(.setP2 r-matcher (.getP2 algorithm))
-      ;(.setMode r-matcher (.getMode algorithm))
-      ;(.setPreFilterCap r-matcher (.getPreFilterCap algorithm))
-      ;(.setDisp12MaxDiff r-matcher 1000000)
-      ;(.setSpeckleWindowSize r-matcher 0)
-
+        (doto ^DisparityBilateralFilter d_filter
+          (.setNumDisparities (nth val_arr 0))
+          (.setNumIters (iter/>>> iterator))
+          (.setRadius (iter/>>> iterator))
+          (.setEdgeThreshold (iter/>>> iterator))
+          (.setMaxDiscThreshold (iter/>>> iterator))
+          (.setSigmaRange (iter/>>> iterator))))
       (reset! *dsp-filter d_filter)
       (reset! *matcher matcher)))
 
@@ -139,8 +110,8 @@
     @*params)
 
   (compute [this [left right]]
-    (let [cuda_l (future (gpu-img-copy (core-to-gpu left) Imgproc/COLOR_BGR2GRAY))
-          cuda_r (future (gpu-img-copy (core-to-gpu right) Imgproc/COLOR_BGR2GRAY))
+    (let [cuda_l (delay (gpu-img-copy (core-to-gpu left) Imgproc/COLOR_BGR2GRAY))
+          cuda_r (delay (gpu-img-copy (core-to-gpu right) Imgproc/COLOR_BGR2GRAY))
           ref_disparity (delay (let [disp (calc-disparity-cuda @cuda_l @cuda_r @*matcher)
                                      filter @*dsp-filter]
                                  (if (some? filter)
@@ -149,7 +120,7 @@
                                  disp))
           ref_depth (delay (calc-depth-cuda
                              @ref_disparity
-                             (second (values this))))
+                             (first (values this))))
           ref_proj (delay (calc-projection-cuda
                             @ref_disparity
                             disparity-to-depth-map
@@ -181,20 +152,26 @@
    (create-cuda-stereo-sgm
      disparity-to-depth-map
      (map->StereoSGMProp
-       {:min-disparity   0
-        :num-disparities 0
-        :p1              10
-        :p2              120
-        :uniqueness      5
-        :mode            0
-        :missing         0
-        :ddepth          -1
-        :radius          3
-        :iterations      0
-        :edge-threshold  1
-        :disp-threshold  2
-        :sigma-range     100
-        :smaller-block     0
-        :pre-filter-cap    31
-        :texture-threshold 3
+       {; STEREO MATCHER
+        :num-disparities     0
+        :block-size          21
+        :min-disparity       0
+        :speckle-window-size 0
+        :speckle-range       0
+        :disparity-max-diff  0
+        ; STEREO SGM
+        :pre-filter-cap      31
+        :uniqueness          5
+        :p1                  10
+        :p2                  120
+        :mode                0
+        ; FILTER
+        :iterations          0
+        :radius              3
+        :edge-threshold      10
+        :disp-threshold      20
+        :sigma-range         100
+        ; PROJECTION
+        :missing             0
+        :ddepth              -1
         }))))

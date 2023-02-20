@@ -1,12 +1,33 @@
 (in-ns 'stereox.cv.block-matching)
 
+(defrecord StereoCudaBMProp
+  [^Integer num-disparities
+   ^Integer block-size
+   ^Integer min-disparity
+   ^Integer speckle-window-size
+   ^Integer speckle-range
+   ^Integer disparity-max-diff
+   ^Integer pre-filter-type
+   ^Integer pre-filter-size
+   ^Integer pre-filter-cap
+   ^Integer texture-threshold
+   ^Integer uniqueness
+   ^Integer smaller-block
+   ^Integer missing
+   ^Integer ddepth
+   ^Integer iterations
+   ^Integer radius
+   ^Float edge-threshold
+   ^Float disp-threshold
+   ^Float sigma-range])
+
 (deftype CudaStereoBM [^Atom *params
                        ^Atom *matcher
                        ^Atom *dsp-filter
                        ^Mat disparity-to-depth-map]
   BlockMatcher
   (options [_]
-    [; STEREO MATCHER
+    [; STEREO MATCHER 0
      ["num-disparities" 1 16 #(-> % int (* 16))]
      ["block-size" 5 51 #(-> % int to-odd)]
      ["min-disparity" 0 100 #(-> % int)]
@@ -125,8 +146,8 @@
   {:static true
    :tag    BlockMatcher}
   ([^Mat disparity-to-depth-map
-    ^StereoBMProp props]
-   (let [matcher (->CudaStereoBM (atom (map->StereoBMProp props))
+    ^StereoCudaBMProp props]
+   (let [matcher (->CudaStereoBM (atom (map->StereoCudaBMProp props))
                                  (atom nil)
                                  (atom nil)
                                  (core-to-cv disparity-to-depth-map))]
@@ -135,7 +156,7 @@
   ([^Mat disparity-to-depth-map]
    (create-cuda-stereo-bm
      disparity-to-depth-map
-     (map->StereoBMProp
+     (map->StereoCudaBMProp
        {; STEREO MATCHER
         :num-disparities     1
         :block-size          21

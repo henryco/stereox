@@ -200,6 +200,16 @@
 (defrecord StereoBMProp
   [^Integer num-disparities
    ^Integer block-size
+   ^Integer min-disparity
+   ^Integer speckle-window-size
+   ^Integer speckle-range
+   ^Integer disparity-max-diff
+   ^Integer pre-filter-type
+   ^Integer pre-filter-size
+   ^Integer pre-filter-cap
+   ^Integer texture-threshold
+   ^Integer uniqueness
+   ^Integer smaller-block
    ^Integer missing
    ^Integer ddepth])
 
