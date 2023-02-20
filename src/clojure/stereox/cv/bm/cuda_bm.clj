@@ -56,7 +56,7 @@
   (values [this]
     (let [p @*params]
       (vec (map (fn [[name min max validator]]
-                  (validator (clamp (get p (keyword name) min) min max)))
+                  (validator (clamp (ord (get p (keyword name)) min) min max)))
                 (options this)))))
 
   (setup [this]

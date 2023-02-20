@@ -1,16 +1,16 @@
 (in-ns 'stereox.cv.block-matching)
 
 (defrecord StereoSGBMProp
-  [^Integer min-disparity
-   ^Integer num-disparities
+  [^Integer num-disparities
    ^Integer block-size
-   ^Integer p1
-   ^Integer p2
-   ^Integer max-disparity
-   ^Integer pre-filter-cap
-   ^Integer uniqueness
+   ^Integer min-disparity
    ^Integer speckle-window-size
    ^Integer speckle-range
+   ^Integer disparity-max-diff
+   ^Integer pre-filter-cap
+   ^Integer uniqueness
+   ^Integer p1
+   ^Integer p2
    ^Integer mode
    ^Integer missing
    ^Integer ddepth])
@@ -20,54 +20,51 @@
                         ^Mat disparity-to-depth-map]
   BlockMatcher
   (options [_]
-    [["min-disparity" 0 100]
-     ["num-disparities" 1 100]
-     ["block-size" 1 500]
-     ["p1" 0 5000]
-     ["p2" 1 5000]
-     ["max-disparity" 0 1000]
-     ["pre-filter-cap" 0 1000]
-     ["uniqueness" 0 100]
-     ["speckle-window-size" 0 500]
-     ["speckle-range" 0 500]
-     ["mode" 0 3]
-     ; MODE_SGBM = 0 MODE_HH = 1 MODE_SGBM_3WAY = 2 MODE_HH4 = 3
-     ["missing" 0 1]
-     ["ddepth" -1 -1]
-     ["kernel" 0 8]
-     ["sigma-1" 0 5]
-     ["sigma-2" 0 5]
+    [; STEREO MATCHER 0
+     ["num-disparities" 1 16 #(->> % int (* 16))]
+     ["block-size" 1 51 #(-> % int to-odd)]
+     ["min-disparity" 0 256 #(-> % int)]
+     ["speckle-window-size" 0 100 #(-> % int)]
+     ["speckle-range" 0 100 #(-> % int)]
+     ["disparity-max-diff" 0 100 #(-> % int)]
+     ;STEREO SGM 6
+     ["pre-filter-cap" 0 100 #(-> % int)]
+     ["uniqueness" 0 100 #(-> % int)]
+     ["p1" 0 5000 #(min (- (int (:p2 @*params)) 1) (int %))]
+     ["p2" 1 5000 #(max (+ (int (:p1 @*params)) 1) (int %))]
+     ["mode" 0 3 #(-> % int)]
+     ; FILTER 11 TODO
+
+     ; PROJECTION 16
+     ["missing" 0 1 #(-> % int)]
+     ["ddepth" -1 -1 #(-> % int)]
+     ["disp-to-depth-type" 0 1 #(-> % int)]
      ])
 
-  (values [_]
-    [(max 0 (int (:min-disparity @*params)))
-     (* 16 (max 1 (int (:num-disparities @*params))))
-     (max 0 (to-odd (int (:block-size @*params))))
-     (min (- (int (:p2 @*params)) 1)
-          (int (:p1 @*params)))
-     (max (+ (int (:p1 @*params)) 1)
-          (int (:p2 @*params)))
-     (max 0 (int (:max-disparity @*params)))
-     (max 0 (int (:pre-filter-cap @*params)))
-     (max 0 (int (:uniqueness @*params)))
-     (max 0 (int (:speckle-window-size @*params)))
-     (max 0 (int (:speckle-range @*params)))
-     (max 0 (min 3 (int (:mode @*params))))])
+  (values [this]
+    (let [p @*params]
+      (vec (map (fn [[name min max validator]]
+                  (validator (clamp (ord (get p (keyword name)) min) min max)))
+                (options this)))))
 
   (setup [this]
-    (let [vals (iter/->Iterator (values this))]
-      (reset! *matcher (StereoSGBM/create
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)
-                         (iter/>>> vals)))))
+    (let [val_arr (values this)
+          iterator (iter/->Iterator (values this))
+          matcher (StereoSGBM/create)]
+      (doto ^StereoMatcher matcher
+        (.setNumDisparities (iter/>>> iterator))
+        (.setBlockSize (iter/>>> iterator))
+        (.setMinDisparity (iter/>>> iterator))
+        (.setSpeckleWindowSize (iter/>>> iterator))
+        (.setSpeckleRange (iter/>>> iterator))
+        (.setDisp12MaxDiff (iter/>>> iterator)))
+      (doto ^StereoSGBM matcher
+        (.setPreFilterCap (iter/>>> iterator))
+        (.setUniquenessRatio (iter/>>> iterator))
+        (.setP1 (iter/>>> iterator))
+        (.setP2 (iter/>>> iterator))
+        (.setMode (iter/>>> iterator)))
+      (reset! *matcher matcher)))
 
   (setup [this m]
     (dosync
@@ -99,7 +96,8 @@
           core_disp (delay (cv-to-core @ref_disparity))
           core_disp_bgr (delay (commons/img-copy
                                  @core_disp
-                                 Imgproc/COLOR_GRAY2BGR))]
+                                 Imgproc/COLOR_GRAY2BGR
+                                 CvType/CV_16U))]
       (map->MatchResults
         {:left          (ref left)
          :right         (ref right)
@@ -129,17 +127,22 @@
    (create-cpu-stereo-sgbm
      disparity-to-depth-map
      (map->StereoSGBMProp
-       {:min-disparity       1
+       {; STEREO MATCHER
         :num-disparities     1
         :block-size          3
-        :p1                  216
-        :p2                  284
-        :max-disparity       1
-        :pre-filter-cap      1
-        :uniqueness          10
+        :min-disparity       1
         :speckle-window-size 100
         :speckle-range       32
+        :disparity-max-diff  0
+        ; STEREO SGBM
+        :pre-filter-cap      31
+        :uniqueness          5
+        :p1                  10
+        :p2                  120
         :mode                0
+        ; FILTER TODO
+
+        ; PROJECTION
         :missing             0
         :ddepth              -1
         }))))
