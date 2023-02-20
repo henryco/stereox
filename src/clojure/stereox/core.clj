@@ -54,7 +54,8 @@
       (if (some? auto-exposure-off)
         (camera/set-auto-exposure-off-value auto-exposure-off))
       (if auto-exposure-force
-        (camera/force-auto-exposure)))
+        (do (println "[WARN]: FORCING CAMERA AUTO EXPOSURE")
+            (camera/force-auto-exposure true))))
     (cond
       (or (nil? (first arguments))
           (:help options))

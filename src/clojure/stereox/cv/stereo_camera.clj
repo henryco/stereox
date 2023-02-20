@@ -12,6 +12,9 @@
 (def ^:private *AUTO_EXPOSURE_OFF
   (atom 1))
 
+(def ^:private *AUTO_EXPOSURE_FORCE
+  (atom false))
+
 (defn set-auto-exposure-on-value
   {:static true} [v]
   (reset! *AUTO_EXPOSURE_ON v))
@@ -21,9 +24,8 @@
   (reset! *AUTO_EXPOSURE_OFF v))
 
 (defn force-auto-exposure
-  {:static true} []
-  ; TODO
-  )
+  {:static true} [v]
+  (reset! *AUTO_EXPOSURE_FORCE v))
 
 (defrecord CameraProperties
   [^PersistentVector ids
@@ -115,10 +117,12 @@
                                          (if (some? (:iso properties))
                                            [Videoio/CAP_PROP_ISO_SPEED (:iso properties)] [])
 
-                                         (if (some? (:exposure properties))
-                                           [Videoio/CAP_PROP_AUTO_EXPOSURE @*AUTO_EXPOSURE_ON
-                                            Videoio/CAP_PROP_EXPOSURE (:exposure properties)]
-                                           [Videoio/CAP_PROP_AUTO_EXPOSURE @*AUTO_EXPOSURE_OFF])
+                                         (if (false? @*AUTO_EXPOSURE_FORCE)
+                                           (if (some? (:exposure properties))
+                                             [Videoio/CAP_PROP_AUTO_EXPOSURE @*AUTO_EXPOSURE_ON
+                                              Videoio/CAP_PROP_EXPOSURE (:exposure properties)]
+                                             [Videoio/CAP_PROP_AUTO_EXPOSURE @*AUTO_EXPOSURE_OFF])
+                                           [])
 
                                          (if (some? (:brightness properties))
                                            [Videoio/CAP_PROP_BRIGHTNESS (:brightness properties)] [])
@@ -184,6 +188,16 @@
    ["iso" 0]
    ])
 
+(defn- filtered-c-props []
+  (apply merge
+         (map (fn [[k v]]
+                {(keyword k) v})
+              (filter (fn [[k _]]
+                        (or (and (not= k :auto-exp)
+                                 (not= k :exposure))
+                            (false? @*AUTO_EXPOSURE_FORCE)))
+                      C_PROPS))))
+
 (defn- find-max-values
   {:static true}
   [^VideoCapture capture]
@@ -207,12 +221,11 @@
                       (fn [[k _]]
                         (and (not= k :auto-exp)
                              (not= k :buffer)))
-                      C_PROPS)))]
+                      (filtered-c-props))))]
       (apply merge
              (map (fn [{:keys [name max]}]
                     {(keyword name) max})
-                  found))
-      )))
+                  found)))))
 
 (defn- create-allowed-opts
   {:static true}
@@ -240,7 +253,7 @@
                 (swap! *props assoc k lv)
                 (if (not= lv rv)
                   (setup this k lv))))
-            C_PROPS)))
+            (filtered-c-props))))
 
   (setup [this m]
     (re-init this (into {} (map (fn [[k v]]
