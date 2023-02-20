@@ -14,7 +14,15 @@
                         ^Mat disparity-to-depth-map]
   BlockMatcher
   (options [_]
-    [["min-disparity" 0 256]
+    [; STEREO MATCHER
+     ["num-disparities" 0 2 #(-> % int (* 16))]
+     ["block-size" 5 51 #(-> % int to-odd)]
+     ["min-disparity" 0 256 #(-> % int)]
+     ["speckle-window-size" 0 100 #(-> % int)]
+     ["speckle-range" 0 100 #(-> % int)]
+     ["disparity-max-diff" 0 100 #(-> % int)]
+
+     ["min-disparity" 0 256]
      ["num-disparities" 0 2]
 
      ["smaller-block" 0 100]
@@ -37,7 +45,7 @@
      ["ddepth" -1 -1]
      ])
 
-  (values [_]
+  (values [this]
     [(max 0 (int (:min-disparity @*params)))
      (get {0 64 1 128 2 256} (int (:num-disparities @*params)) 64)
      (min (- (int (:p2 @*params)) 1)
@@ -52,7 +60,11 @@
      (max 0 (float (* 0.01 (:disp-threshold @*params))))
      (max 0 (float (* 0.1 (:sigma-range @*params))))
      (max 0 (int (:pre-filter-cap @*params)))
-     ])
+     ]
+    (let [p @*params]
+      (vec (map (fn [[name min max validator]]
+                  (validator (clamp (get p (keyword name) min) min max)))
+                (options this)))))
 
   (setup [this]
     (let [[min_disparity

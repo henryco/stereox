@@ -93,8 +93,8 @@
 
   (compute [this [left right]]
     (let [props (values this)
-          cuda_l (future (gpu-img-copy (core-to-gpu left) Imgproc/COLOR_BGR2GRAY))
-          cuda_r (future (gpu-img-copy (core-to-gpu right) Imgproc/COLOR_BGR2GRAY))
+          cuda_l (delay (gpu-img-copy (core-to-gpu left) Imgproc/COLOR_BGR2GRAY))
+          cuda_r (delay (gpu-img-copy (core-to-gpu right) Imgproc/COLOR_BGR2GRAY))
           ref_disparity (delay (let [disp (calc-disparity-cuda @cuda_l @cuda_r @*matcher)
                                      filter @*dsp-filter]
                                  (if (and (> (nth props 3) 0)
