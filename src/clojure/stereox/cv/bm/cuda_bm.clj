@@ -24,7 +24,7 @@
 (deftype CudaStereoBM [^Atom *params
                        ^Atom *matcher
                        ^Atom *dsp-filter
-                       ^Mat disparity-to-depth-map]
+                       disparity-to-depth-maps]
   BlockMatcher
   (options [_]
     [; STEREO MATCHER 0
@@ -128,7 +128,7 @@
                              (first props)))
           ref_proj (delay (calc-projection-cuda
                             @ref_disparity
-                            disparity-to-depth-map
+                            (nth disparity-to-depth-maps (last props))
                             (-> @*params :missing (> 0))
                             (-> @*params :ddepth (ord -1))))]
       (map->MatchResults
@@ -145,17 +145,17 @@
 (defn create-cuda-stereo-bm
   {:static true
    :tag    BlockMatcher}
-  ([^Mat disparity-to-depth-map
+  ([disparity-to-depth-maps
     ^StereoCudaBMProp props]
    (let [matcher (->CudaStereoBM (atom (map->StereoCudaBMProp props))
                                  (atom nil)
                                  (atom nil)
-                                 (core-to-cv disparity-to-depth-map))]
+                                 disparity-to-depth-maps)]
      (setup matcher)
      matcher))
-  ([^Mat disparity-to-depth-map]
+  ([disparity-to-depth-maps]
    (create-cuda-stereo-bm
-     disparity-to-depth-map
+     disparity-to-depth-maps
      (map->StereoCudaBMProp
        {; STEREO MATCHER
         :num-disparities     1

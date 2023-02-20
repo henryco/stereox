@@ -2,7 +2,7 @@
 
 (deftype CpuStereoBM [^Atom *params
                       ^Atom *matcher
-                      ^Mat disparity-to-depth-map]
+                      disparity-to-depth-maps]
   BlockMatcher
   (options [_]
     [; STEREO MATCHER
@@ -76,7 +76,7 @@
   (params [_]
     (map->StereoBMProp @*params))
 
-  (compute [_ [left right]]
+  (compute [this [left right]]
     (let [ref_disparity (delay (calc-disparity-cpu
                                  (commons/img-copy left Imgproc/COLOR_BGR2GRAY)
                                  (commons/img-copy right Imgproc/COLOR_BGR2GRAY)
@@ -96,7 +96,7 @@
          :projection    (delay (cv-to-core
                                  (calc-projection-cpu
                                    @ref_disparity
-                                   disparity-to-depth-map
+                                   (nth disparity-to-depth-maps (last (values this)))
                                    (-> @*params :missing (> 0))
                                    (-> @*params :ddepth (ord -1)))))})))
   )
@@ -104,16 +104,16 @@
 (defn create-cpu-stereo-bm
   {:static true
    :tag    BlockMatcher}
-  ([^Mat disparity-to-depth-map
+  ([disparity-to-depth-maps
     ^StereoBMProp props]
    (let [matcher (->CpuStereoBM (atom (map->StereoBMProp props))
                                 (atom nil)
-                                (core-to-cv disparity-to-depth-map))]
+                                disparity-to-depth-maps)]
      (setup matcher)
      matcher))
-  ([^Mat disparity-to-depth-map]
+  ([disparity-to-depth-maps]
    (create-cpu-stereo-bm
-     disparity-to-depth-map
+     disparity-to-depth-maps
      (map->StereoBMProp
        {; STEREO MATCHER
         :num-disparities     1

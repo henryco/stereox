@@ -23,7 +23,7 @@
 (deftype CudaStereoSGM [^Atom *params
                         ^Atom *matcher
                         ^Atom *dsp-filter
-                        ^Mat disparity-to-depth-map]
+                        disparity-to-depth-maps]
   BlockMatcher
   (options [_]
     [; STEREO MATCHER 0
@@ -110,7 +110,8 @@
     @*params)
 
   (compute [this [left right]]
-    (let [cuda_l (delay (gpu-img-copy (core-to-gpu left) Imgproc/COLOR_BGR2GRAY))
+    (let [props (values this)
+          cuda_l (delay (gpu-img-copy (core-to-gpu left) Imgproc/COLOR_BGR2GRAY))
           cuda_r (delay (gpu-img-copy (core-to-gpu right) Imgproc/COLOR_BGR2GRAY))
           ref_disparity (delay (let [disp (calc-disparity-cuda @cuda_l @cuda_r @*matcher)
                                      filter @*dsp-filter]
@@ -120,10 +121,10 @@
                                  disp))
           ref_depth (delay (calc-depth-cuda
                              @ref_disparity
-                             (first (values this))))
+                             (first props)))
           ref_proj (delay (calc-projection-cuda
                             @ref_disparity
-                            disparity-to-depth-map
+                            (nth disparity-to-depth-maps (last props))
                             (-> @*params :missing (> 0))
                             (-> @*params :ddepth (ord -1))))]
       (map->MatchResults
@@ -140,17 +141,17 @@
 (defn create-cuda-stereo-sgm
   {:static true
    :tag    BlockMatcher}
-  ([^Mat disparity-to-depth-map
+  ([disparity-to-depth-maps
     ^StereoSGMProp props]
    (let [matcher (->CudaStereoSGM (atom (map->StereoSGMProp props))
                                   (atom nil)
                                   (atom nil)
-                                  (core-to-cv disparity-to-depth-map))]
+                                  disparity-to-depth-maps)]
      (setup matcher)
      matcher))
-  ([^Mat disparity-to-depth-map]
+  ([disparity-to-depth-maps]
    (create-cuda-stereo-sgm
-     disparity-to-depth-map
+     disparity-to-depth-maps
      (map->StereoSGMProp
        {; STEREO MATCHER
         :num-disparities     0

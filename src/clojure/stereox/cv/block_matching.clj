@@ -218,16 +218,19 @@
 (load "bm/cuda_bm")
 (load "bm/cpu_bm")
 
+(defn- prep-matrices [arr]
+  (vec (map (fn [mat] (core-to-cv mat)) (flatten arr))))
+
 (defn create-stereo-matcher
   "Create BlockMatcher instance.
   key: [:cpu-bm|:cpu-sgbm|:cuda-bm|:cuda-sgm]"
   {:tag    BlockMatcher
    :static true}
-  [key disparity_to_depth_matrix]
+  [key & disparity_to_depth_matrices]
   (case key
-    :cpu-bm (create-cpu-stereo-bm disparity_to_depth_matrix)
-    :cuda-bm (create-cuda-stereo-bm disparity_to_depth_matrix)
-    :cpu-sgbm (create-cpu-stereo-sgbm disparity_to_depth_matrix)
-    :cuda-sgm (create-cuda-stereo-sgm disparity_to_depth_matrix)
+    :cpu-bm (create-cpu-stereo-bm (prep-matrices disparity_to_depth_matrices))
+    :cuda-bm (create-cuda-stereo-bm (prep-matrices disparity_to_depth_matrices))
+    :cpu-sgbm (create-cpu-stereo-sgbm (prep-matrices disparity_to_depth_matrices))
+    :cuda-sgm (create-cuda-stereo-sgm (prep-matrices disparity_to_depth_matrices))
     (throw (Exception. (str "Unknown matcher name: " key)))
     ))

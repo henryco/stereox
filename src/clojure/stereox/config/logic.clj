@@ -111,10 +111,12 @@
   [& {:as args}]
   (log/info (pr-str args))
   (let [c_data (read-calibration-data args)
-        params (map->ConfigParameters args)]
+        params (map->ConfigParameters args)
+        matrices [(:disparity_to_depth_matrix c_data)
+                  (:disparity_to_depth_matrix_v2 c_data)]]
     (->ConfigLogic
       (atom
-        (map->LogicState {:block-matcher (bm/create-stereo-matcher (:matcher params) (:disparity_to_depth_matrix c_data))
+        (map->LogicState {:block-matcher (bm/create-stereo-matcher (:matcher params) matrices)
                           :normalizer    (nrm/create-normalizer c_data (:ids params))
                           :camera        (camera/create params)
                           :calibration   c_data
