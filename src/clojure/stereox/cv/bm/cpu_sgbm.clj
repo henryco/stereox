@@ -145,4 +145,5 @@
         ; PROJECTION
         :missing             0
         :ddepth              -1
+        :disp-to-depth-type  0
         }))))
