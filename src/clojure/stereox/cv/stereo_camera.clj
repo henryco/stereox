@@ -20,6 +20,11 @@
   {:static true} [v]
   (reset! *AUTO_EXPOSURE_OFF v))
 
+(defn force-auto-exposure
+  {:static true} []
+  ; TODO
+  )
+
 (defrecord CameraProperties
   [^PersistentVector ids
    ^Integer width
