@@ -154,16 +154,16 @@
      (map->StereoSGMProp
        {; STEREO MATCHER
         :num-disparities     0
-        :block-size          21
+        :block-size          5
         :min-disparity       0
         :speckle-window-size 0
         :speckle-range       0
         :disparity-max-diff  0
         ; STEREO SGM
-        :pre-filter-cap      31
+        :pre-filter-cap      0
         :uniqueness          5
-        :p1                  10
-        :p2                  120
+        :p1                  20
+        :p2                  200
         :mode                0
         ; FILTER
         :iterations          0
