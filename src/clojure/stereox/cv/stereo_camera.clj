@@ -6,6 +6,20 @@
            (org.opencv.videoio VideoCapture VideoWriter Videoio))
   (:gen-class))
 
+(def ^:private *AUTO_EXPOSURE_ON
+  (atom 3))
+
+(def ^:private *AUTO_EXPOSURE_OFF
+  (atom 1))
+
+(defn set-auto-exposure-on-value
+  {:static true} [v]
+  (reset! *AUTO_EXPOSURE_ON v))
+
+(defn set-auto-exposure-off-value
+  {:static true} [v]
+  (reset! *AUTO_EXPOSURE_OFF v))
+
 (defrecord CameraProperties
   [^PersistentVector ids
    ^Integer width
@@ -97,9 +111,9 @@
                                            [Videoio/CAP_PROP_ISO_SPEED (:iso properties)] [])
 
                                          (if (some? (:exposure properties))
-                                           [Videoio/CAP_PROP_AUTO_EXPOSURE 1
+                                           [Videoio/CAP_PROP_AUTO_EXPOSURE @*AUTO_EXPOSURE_ON
                                             Videoio/CAP_PROP_EXPOSURE (:exposure properties)]
-                                           [Videoio/CAP_PROP_AUTO_EXPOSURE 3])
+                                           [Videoio/CAP_PROP_AUTO_EXPOSURE @*AUTO_EXPOSURE_OFF])
 
                                          (if (some? (:brightness properties))
                                            [Videoio/CAP_PROP_BRIGHTNESS (:brightness properties)] [])
@@ -174,7 +188,7 @@
                   (map
                     (fn [[key val]]
                       (if (= key :exposure)
-                        (.set capture Videoio/CAP_PROP_AUTO_EXPOSURE 1))
+                        (.set capture Videoio/CAP_PROP_AUTO_EXPOSURE @*AUTO_EXPOSURE_OFF))
                       (let [initial (.get capture val)
                             supported (.set capture val Short/MAX_VALUE)
                             maximal (.get capture val)]
@@ -245,10 +259,10 @@
                           vc))
         :exposure (if (some? vv)
                     (run! (fn [c]
-                            (.set c Videoio/CAP_PROP_AUTO_EXPOSURE 1)
+                            (.set c Videoio/CAP_PROP_AUTO_EXPOSURE @*AUTO_EXPOSURE_OFF)
                             (.set c Videoio/CAP_PROP_EXPOSURE vv))
                           vc)
-                    (run! #(.set % Videoio/CAP_PROP_AUTO_EXPOSURE 3)
+                    (run! #(.set % Videoio/CAP_PROP_AUTO_EXPOSURE @*AUTO_EXPOSURE_ON)
                           vc))
         :buffer (if (some? vv)
                   (run! #(.set % Videoio/CAP_PROP_BUFFERSIZE vv)
