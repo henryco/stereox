@@ -4,6 +4,8 @@
   :license {:name "Apache License, Version 2.0"
             :url  "http://www.apache.org/licenses/LICENSE-2.0"}
   :repl-options {:init-ns stereox.core}
+  :plugins [[gen-kernels "0.0.1"]]
+  :aliases {"cudac" ["gen-kernels"] "jcc" ["do" "javac," "cudac"]}
   :dependencies [[org.clojure/tools.cli "1.0.214"]
                  [org.clojure/clojure "1.11.1"]
                  [org.bytedeco/opencv-platform "4.6.0-1.5.8"]

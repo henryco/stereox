@@ -24,6 +24,7 @@
 (deftype CudaStereoBM [^Atom *params
                        ^Atom *matcher
                        ^Atom *dsp-filter
+                       ^DeltaCalculator deltar
                        disparity-to-depth-maps]
   BlockMatcher
   (options [_]
@@ -50,6 +51,7 @@
      ; PROJECTION 17
      ["missing" 0 1 #(-> % int)]
      ["ddepth" -1 -1 #(-> % int)]
+     ["delta-only" 0 1 #(-> % int (>= 1))]
      ["disp-to-depth-type" 0 1 #(-> % int)]
      ])
 
@@ -114,8 +116,13 @@
 
   (compute [this [left right]]
     (let [props (values this)
-          cuda_l (delay (gpu-img-copy (core-to-gpu left) Imgproc/COLOR_BGR2GRAY))
-          cuda_r (delay (gpu-img-copy (core-to-gpu right) Imgproc/COLOR_BGR2GRAY))
+
+          delta_left (delay (dt/delta deltar (core-to-gpu left)))
+          delta_right (delay (dt/delta deltar (core-to-gpu right)))
+
+          cuda_l (delay (gpu-img-copy @delta_left Imgproc/COLOR_BGR2GRAY))
+          cuda_r (delay (gpu-img-copy @delta_right Imgproc/COLOR_BGR2GRAY))
+
           ref_disparity (delay (let [disp (calc-disparity-cuda @cuda_l @cuda_r @*matcher)
                                      filter @*dsp-filter]
                                  (if (and (> (nth props 3) 0)
@@ -130,7 +137,9 @@
                             @ref_disparity
                             (nth disparity-to-depth-maps (last props))
                             (-> @*params :missing (> 0))
-                            (-> @*params :ddepth (ord -1))))]
+                            (-> @*params :ddepth (ord -1))))
+          ;delta_left (delay (dt/delta deltar @cuda_l))
+          ]
       (map->MatchResults
         {:depth         ref_depth
          :disparity     (delay (gpu-to-core @ref_disparity))
@@ -150,6 +159,7 @@
    (let [matcher (->CudaStereoBM (atom (map->StereoCudaBMProp props))
                                  (atom nil)
                                  (atom nil)
+                                 (dt/create-cuda-delta)
                                  disparity-to-depth-maps)]
      (setup matcher)
      matcher))
@@ -180,5 +190,6 @@
         ; PROJECTION
         :missing             0
         :ddepth              -1
+        :delta-only          0
         :disp-to-depth-type  0
         }))))

@@ -1,15 +1,19 @@
 (ns stereox.cv.block-matching
+  (:require [stereox.utils.iterators :as iter]
+            [stereox.utils.commons :as commons]
+            [stereox.cv.delta :as dt])
   (:import (clojure.lang Atom Ref)
            (org.bytedeco.javacv OpenCVFrameConverter$ToMat OpenCVFrameConverter$ToOrgOpenCvCoreMat)
            (org.bytedeco.opencv.opencv_core GpuMat Mat Size Stream)
            (org.bytedeco.opencv.opencv_cudafilters Filter)
            (org.bytedeco.opencv.opencv_cudastereo DisparityBilateralFilter StereoSGM)
            (org.bytedeco.opencv.opencv_calib3d StereoSGBM StereoBM StereoMatcher)
-           (org.bytedeco.opencv.global opencv_imgproc opencv_calib3d opencv_cudastereo opencv_cudafilters opencv_core opencv_cudaimgproc opencv_ximgproc)
+           (org.bytedeco.opencv.global opencv_imgproc opencv_calib3d opencv_cudastereo
+                                       opencv_cudafilters opencv_core opencv_cudaimgproc opencv_ximgproc
+                                       opencv_cudaarithm)
            (org.opencv.core CvType)
-           (org.opencv.imgproc Imgproc))
-  (:require [stereox.utils.iterators :as iter]
-            [stereox.utils.commons :as commons])
+           (org.opencv.imgproc Imgproc)
+           (stereox.cv.delta DeltaCalculator))
   (:gen-class))
 
 (defn- clamp

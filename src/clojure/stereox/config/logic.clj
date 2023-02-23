@@ -93,6 +93,7 @@
 
   (save-settings [_]
     ; TODO
+    (log/info "saving stereo configuration...")
     )
   )
 
