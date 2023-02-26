@@ -7,8 +7,10 @@
     [clojure.tools.cli :as cli])
   (:gen-class)
   (:import (org.bytedeco.javacpp Loader)
+           (org.bytedeco.cuda.presets cudart)
            (org.bytedeco.opencv opencv_java)))
 
+(Loader/load ^Class cudart)
 (Loader/load ^Class opencv_java)
 
 (def cli-options
