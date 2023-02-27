@@ -24,7 +24,7 @@
 (deftype CudaStereoBM [^Atom *params
                        ^Atom *matcher
                        ^Atom *dsp-filter
-                       ^DeltaCalculator deltar
+                       ^FrameDelta deltar
                        disparity-to-depth-maps]
   BlockMatcher
   (options [_]
