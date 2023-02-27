@@ -26,34 +26,17 @@
 
     (cuda/with-context
       (fn [_ _]
-        (let [width (int-array [(.cols curr)])
-              height (int-array [(.rows curr)])
-              step_src (int-array [(.step curr)])
-              step_dst (int-array [(.step out)])
-              dev_src (long-array [(.address (.cudaPtr curr))])
-              dev_dst (long-array [(.address (.cudaPtr out))])
-              params (into-array Pointer [(LongPointer. dev_src)
-                                          (LongPointer. dev_dst)
-                                          (IntPointer. step_src)
-                                          (IntPointer. step_dst)
-                                          (IntPointer. width)
-                                          (IntPointer. height)])
-              dimension (cuda/optimal-bt (.cols curr) (.rows curr))
-              b_x (-> dimension first first int)
-              b_y (-> dimension first last int)
-              t_x (-> dimension last first int)
-              t_y (-> dimension last last int)
-              ]
+
+        (let [function (deref *function)]
+
+          (function (.address (.cudaPtr curr))
+                    (.address (.cudaPtr out))
+                    (.step curr)
+                    (.step out)
+                    (.cols curr)
+                    (.rows curr))
 
           ; TODO MEM COPY D TO D
-
-          (cuda/status (cudart/cuLaunchKernel ^CUfunc_st (deref *function)
-                                              b_x b_y 1
-                                              t_x t_y 1
-                                              0 nil
-                                              (PointerPointer. ^"[Lorg.bytedeco.javacpp.Pointer;" params)
-                                              nil))
-          (cuda/status (cudart/cuCtxSynchronize))
 
           )
 
@@ -72,22 +55,29 @@
         ;         )
 
         )
-      ;#(println %)
+      #(println %)
       )
-    out)
-  ;curr                                                      ;TODO REMOVE
-  )
+    out))
 
-(defn init []
+(defn init [width height]
   (if (nil? @*function)
-    (reset! *function (cuda/load-func "cuda/conv_bgr_8u.cu" "conv"))
-    ; MORE
-    ))
+    (reset! *function
+            (kernel/kernel-function
+              "cuda/conv_bgr_8u.cu"
+              "conv"
+              width
+              height
+              shorts
+              shorts
+              int
+              int
+              int
+              int))))
 
 (deftype CudaDelta [*prev]
   FrameDelta
   (delta [_ input]
-    (init)
+    (init (.cols input) (.rows input))
     (if (nil? @*prev)
       (do (reset! *prev input) input)
       (let [out (render input @*prev)]

@@ -35,3 +35,6 @@
   [f]
   `(reify java.util.function.Supplier
      (get [_] ~f)))
+
+(defmacro in [v & params]
+  `(or ~@(map (fn [p] `(= ~v ~p)) params)))
