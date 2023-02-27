@@ -27,10 +27,13 @@
     (cuda/with-context
       (fn [_ _]
 
-        (let [function (deref *function)]
+        (let [function (deref *function)
+              ;d_src (.address (.ptr ^GpuMat curr))
+              ;d_dst (.address (.ptr ^GpuMat curr))
+              ]
 
-          (function (.address (.cudaPtr curr))
-                    (.address (.cudaPtr out))
+          (function (.address (.ptr curr))
+                    (.address (.ptr out))
                     (.step curr)
                     (.step out)
                     (.cols curr)
@@ -55,7 +58,7 @@
         ;         )
 
         )
-      #(println %)
+      ;#(println %)
       )
     out))
 

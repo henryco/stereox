@@ -98,14 +98,20 @@
            ~'org.bytedeco.javacpp.Pointer
            [~@(map-indexed
                 (fn [i a]
-                  (if (in (eval a) bytes shorts ints longs floats doubles)
-                    `(new ~'org.bytedeco.javacpp.LongPointer
-                          (long-array [(get ~args ~i)]))
-                    `(new ~(symbol (str "org.bytedeco.javacpp."
-                                        (.toUpperCase (.substring (str a) 0 1))
-                                        (.substring (str a) 1 (.length (str a)))
-                                        "Pointer"))
-                          (~(symbol (str a "-array")) [(get ~args ~i)]))))
+                  (let [s_a (.replaceFirst (str a) ":" "")]
+                    (if (= (eval a) :pointer)
+                      `(get ~args ~i)
+                      (if (in (eval a)
+                              bytes shorts ints longs floats doubles
+                              :bytes :shorts :ints :long :floats :doubles
+                              :array :vector)
+                        `(new ~'org.bytedeco.javacpp.LongPointer
+                              (long-array [(get ~args ~i)]))
+                        `(new ~(symbol (str "org.bytedeco.javacpp."
+                                            (.toUpperCase (.substring s_a 0 1))
+                                            (.substring s_a 1 (.length s_a))
+                                            "Pointer"))
+                              (~(symbol (str "clojure.core/" s_a "-array")) [(get ~args ~i)]))))))
                 (flatten arguments))])))))
 
 (defmacro kernel-function
