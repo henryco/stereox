@@ -39,13 +39,6 @@
   (if (not= s cudart/CUDA_SUCCESS)
     (throw (Exception. (str "CUDA execution: ERROR [" s "]")))))
 
-(defn- even
-  "Returns 'v' if even, otherwise '(+ v 1)'"
-  [v]
-  (if (not= (mod v 2) 0)
-    (+ v 1)
-    v))
-
 (defn context-create
   "Creates new CUDA context for first device in provided int array"
   {:static true
