@@ -12,9 +12,6 @@
 (declare devices*)
 (declare context-create)
 
-(def ^:private T 1024)
-(def ^:private E 32)
-
 (def ^:private devices
   (ThreadLocal/withInitial
     (sup-> (let [device (int-array [0])]
