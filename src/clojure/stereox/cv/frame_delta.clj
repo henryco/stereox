@@ -13,32 +13,13 @@
 
 (def ^:private *function (atom nil))
 
-(defn- gpu-to-cv
-  {:static true
-   :tag    Mat}
-  [^GpuMat mat]
-  (let [cv_mat (Mat.)]
-    (.download mat cv_mat)
-    cv_mat))
-
-(defn- cv-to-core
-  {:static true
-   :tag    org.opencv.core.Mat}
-  [^Mat cvMat]
-  (let [conv_1 (new OpenCVFrameConverter$ToMat)
-        conv_2 (new OpenCVFrameConverter$ToOrgOpenCvCoreMat)]
-    (->> cvMat (.convert conv_1) (.convert conv_2))))
-
-
 (defprotocol FrameDelta
   "Delta calculator"
   (delta [_ input] "Calculate delta"))
 
 (defn render [^GpuMat curr ^GpuMat prev]
 
-  (let [out (GpuMat. (.size curr)
-                     (.type curr)
-                     (Scalar. 0 0 0 0))]
+  (let [out (GpuMat. (.size curr) (.type curr))]
     ;(opencv_cudaarithm/absdiff
     ;  ^GpuMat prev
     ;  ^GpuMat curr
@@ -49,62 +30,10 @@
 
         (let [function (deref *function)]
 
-          ; FIXME kernel/parameters?
           (function (.ptr ^GpuMat out)
                     (.step out)
                     (.cols out)
                     (.rows out))
-
-          (let [mat (gpu-to-cv out)
-                mta (cv-to-core mat)
-                arr (byte-array (int (* (.total mta) (.channels mta))))
-                ]
-            (.get mta 0 0 arr)
-
-            ;(println (CvType/typeToString (.type mta)))
-
-            (println (alength ^bytes arr))
-            (println (.step mat))
-            (println (aget ^bytes arr 0)
-                     (aget ^bytes arr 1)
-                     (aget ^bytes arr 2)
-
-                     (aget ^bytes arr 3)
-                     (aget ^bytes arr 4)
-                     (aget ^bytes arr 5)
-
-                     (aget ^bytes arr 6)
-                     (aget ^bytes arr 7)
-                     (aget ^bytes arr 8)
-
-                     (aget ^bytes arr 9)
-                     (aget ^bytes arr 10)
-                     (aget ^bytes arr 11)
-
-                     (aget ^bytes arr (+ 0 (* 3 3) (* (.step mat) 350 )))
-                     (aget ^bytes arr (+ 1 (* 3 3) (* (.step mat) 350 )))
-                     (aget ^bytes arr (+ 2 (* 3 3) (* (.step mat) 350 )))
-                     )
-
-
-            )
-
-
-          ;(cuda/status (cudart/cuMemAlloc d_src_2 (* (.step curr) (.rows curr))))
-          ;(cuda/status (cudart/cuMemAlloc d_dst_2 (* (.step out) (.rows out))))
-
-          ;(cuda/status (cudart/cuMemcpyDtoD (aget d_src_2 0) (.address d_src_1) (* (.step curr) (.rows curr))))
-          ;(cuda/status (cudart/cuMemcpyDtoD (aget d_dst_2 0) (.address d_dst_1) (* (.step out) (.rows out))))
-
-          ;(cuda/status (cudart/cudaMemcpy d_src_2 d_src_1 size_src cudart/cudaMemcpyDeviceToDevice))
-          ;(cuda/status (cudart/cudaMemcpy d_dst_2 d_dst_1 size_dst cudart/cudaMemcpyDeviceToDevice))
-
-          ;(function d_src_2
-          ;          d_dst_2
-          ;          (.step curr)
-          ;          (.step out)
-          ;          (.cols curr)
-          ;          (.rows curr))
 
           )
 

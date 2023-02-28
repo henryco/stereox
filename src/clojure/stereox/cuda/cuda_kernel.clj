@@ -6,14 +6,15 @@
   (:import (clojure.lang IFn)
            (java.nio.file Files Paths)
            (org.bytedeco.javacpp Pointer PointerPointer)
-           (org.bytedeco.cuda.cudart CUctx_st CUfunc_st)
+           (org.bytedeco.cuda.cudart CUctx_st CUfunc_st cudaFuncAttributes)
            (org.bytedeco.cuda.global cudart))
   (:gen-class))
 
 (def ^:private *cache (atom {}))
 
-(def ^:private T 1024)
-(def ^:private E 32)
+(def ^:private E
+  "Min block size (threads per block)"
+  32)
 
 (defn- even
   "Returns 'v' if even, otherwise '(+ v 1)'"
@@ -59,23 +60,45 @@
             (swap! *cache assoc @name file)
             @file)))))
 
-(defn optimal-bt
+;(defn function-bt
+;  "Find optimal B,T ratio, where:
+;    B - Number of blocks (grid dimension)
+;    T - Number of threads per block (block dimension)
+;  Prefers lower number of blocks (B).
+;  Returns:
+;    [[B,T]...]"
+;  [^CUfunc_st function & arr]
+;  (cuda/with-context
+;    (fn [_ _]
+;      (let [collection (flatten arr)
+;            S (int (Math/pow (cuda/block-max-threads function)
+;                             (double (/ 1 (count collection)))))]
+;        (map (fn [N] [(int (/ (+ N S -1) S)) S])
+;             collection)))))
+
+(defn function-bt
   "Find optimal B,T ratio, where:
-    B - Number of blocks
-    T - Number of threads per block
+    B - Number of blocks (grid dimension)
+    T - Number of threads per block (block dimension)
   Prefers lower number of blocks (B).
   Returns:
     [[B,T]...]"
-  [& arr]
-  (map (fn [N]
-         (if (= N T)
-           [1 N]
-           (let [gamma (-> (/ N E) Math/ceil int)
-                 betta (-> gamma even (/ 2) int)
-                 t (-> (* betta E) (min T) int)
-                 b (-> (/ N t) Math/ceil int)]
-             [b t])))
-       (flatten arr)))
+  [^CUfunc_st function & arr]
+  (cuda/with-context
+    (fn [_ _]
+      (let [collection (flatten arr)
+            S (int (Math/pow (cuda/block-max-threads function)
+                             (double (/ 1 (count collection)))))]
+        (map (fn [N]
+               (if (= N S)
+                 [1 N]
+                 (let [gamma (-> (/ N E) Math/ceil int)
+                       betta (-> gamma even (/ 2) int)
+                       t (-> (* betta E) (min S) int)
+                       b (-> (/ N t) Math/ceil int)]
+                   [b t])))
+             collection)))))
+
 
 (defmacro parameters
   "Creates Function that transform CUDA kernel parameters into Pointer.
@@ -152,7 +175,7 @@
         t_x (gensym 't_x_)
         t_y (gensym 't_y_)]
     `(let [~function (~'stereox.cuda.cuda/load-func ~file ~name)
-           ~dim (stereox.cuda.cuda-kernel/optimal-bt ~width ~height)
+           ~dim (stereox.cuda.cuda-kernel/function-bt ~function ~width ~height)
            ~params ~(macroexpand `(stereox.cuda.cuda-kernel/parameters ~@args_type))
            ~b_x (-> ~dim first first int)
            ~b_y (-> ~dim first last int)
@@ -161,4 +184,4 @@
        (fn [& ~args]
          (let [~pointer (~params ~args)]
            (stereox.cuda.cuda-kernel/launch-kernel-function
-             ~function ~pointer ~b_x ~t_x ~b_y ~t_y))))))
+             ~function ~pointer ~b_x ~b_y ~t_x ~t_y))))))

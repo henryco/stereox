@@ -96,7 +96,21 @@
      (timer (- (System/nanoTime) t0))
      r)))
 
-(defn load-func [file ^String name]
+(defn block-max-threads
+  "Returns max number of threads per block for kernel function"
+  {:static true
+   :tag    Integer}
+  [^CUfunc_st function]
+  (let [arr (int-array 1)]
+    (status (cudart/cuFuncGetAttribute
+              arr cudart/CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK function))
+    (aget arr 0)))
+
+(defn load-func
+  "Loads and returns CUDA kernel function"
+  {:static true
+   :tag    CUfunc_st}
+  [file ^String name]
   (with-context
     (fn [_ _]
       (let [module (CUmod_st.)
@@ -104,23 +118,5 @@
             file (-> file (.replaceAll ".cu" ".ptx") (io/resource) (.getPath))]
         (status (cudart/cuModuleLoad module (BytePointer. ^String file)))
         (status (cudart/cuModuleGetFunction function module name))
+        ;(log/info "MAX THREADS PER BLOCK: " (block-max-threads function))
         function))))
-
-
-(defn optimal-bt
-  "Find optimal B,T ratio, where:
-    B - Number of blocks
-    T - Number of threads per block
-  Prefers lower number of blocks (B).
-  Returns:
-    [[B,T]...]"
-  [& arr]
-  (map (fn [N]
-         (if (= N T)
-           [1 N]
-           (let [gamma (-> (/ N E) Math/ceil int)
-                 betta (-> gamma even (/ 2) int)
-                 t (-> (* betta E) (min T) int)
-                 b (-> (/ N t) Math/ceil int)]
-             [b t])))
-       (flatten arr)))
