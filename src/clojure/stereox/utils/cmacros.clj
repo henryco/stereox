@@ -38,3 +38,11 @@
 
 (defmacro in [v & params]
   `(or ~@(map (fn [p] `(= ~v ~p)) params)))
+
+(defmacro with-timer [func & args]
+  (if (or (nil? func) (= nil func))
+    `(do ~@(map identity args))
+    (let [t0 (gensym 't0)]
+      `(let [~t0 (System/nanoTime)]
+         ~@(map identity args)
+         (~func (- (System/nanoTime) ~t0))))))

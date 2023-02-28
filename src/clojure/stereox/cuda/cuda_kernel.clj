@@ -32,16 +32,19 @@
    ^Integer t_x
    ^Integer b_y
    ^Integer t_y]
-  (cuda/status
-    (cudart/cuLaunchKernel
-      function
-      b_x b_y 1
-      t_x t_y 1
-      0 nil
-      (PointerPointer. params)
-      nil))
-  (cuda/status
-    (cudart/cuCtxSynchronize)))
+  (with-timer
+    ;#(println %)
+    nil
+    (cuda/status
+      (cudart/cuLaunchKernel
+        function
+        b_x b_y 1
+        t_x t_y 1
+        0 nil
+        (PointerPointer. params)
+        nil))
+    (cuda/status
+      (cudart/cuCtxSynchronize))))
 
 (defn file*
   "Load CUDA kernel file"
@@ -178,10 +181,11 @@
            ~dim (stereox.cuda.cuda-kernel/function-bt ~function ~width ~height)
            ~params ~(macroexpand `(stereox.cuda.cuda-kernel/parameters ~@args_type))
            ~b_x (-> ~dim first first int)
-           ~b_y (-> ~dim first last int)
-           ~t_x (-> ~dim last first int)
+           ~t_x (-> ~dim first last int)
+           ~b_y (-> ~dim last first int)
            ~t_y (-> ~dim last last int)]
+       (println ~b_x ~t_x ~b_y ~t_y)
        (fn [& ~args]
          (let [~pointer (~params ~args)]
            (stereox.cuda.cuda-kernel/launch-kernel-function
-             ~function ~pointer ~b_x ~b_y ~t_x ~t_y))))))
+             ~function ~pointer ~b_x ~t_x ~b_y ~t_y))))))
