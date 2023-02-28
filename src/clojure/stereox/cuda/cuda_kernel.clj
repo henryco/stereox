@@ -85,8 +85,8 @@
     TYPE of kernel parameters.
 
   Example:
-    (def parameters (builder shorts shorts int float))
-    (parameters ptr_1 ptr_2 127 256)"
+    (def parameters (builder Pointer shorts int float))
+    (parameters ptr_1 0 127 256)"
   {:static true
    :tag    IFn}
   [& arguments]
@@ -99,19 +99,22 @@
            [~@(map-indexed
                 (fn [i a]
                   (let [s_a (.replaceFirst (str a) ":" "")]
-                    (if (= (eval a) :pointer)
+                    (if (in (eval a) :value :raw :plain)
                       `(get ~args ~i)
-                      (if (in (eval a)
-                              bytes shorts ints longs floats doubles
-                              :bytes :shorts :ints :long :floats :doubles
-                              :array :vector)
+                      (if (in (eval a) :pointer Pointer)
                         `(new ~'org.bytedeco.javacpp.LongPointer
-                              (long-array [(get ~args ~i)]))
-                        `(new ~(symbol (str "org.bytedeco.javacpp."
-                                            (.toUpperCase (.substring s_a 0 1))
-                                            (.substring s_a 1 (.length s_a))
-                                            "Pointer"))
-                              (~(symbol (str "clojure.core/" s_a "-array")) [(get ~args ~i)]))))))
+                              (long-array [(.address ^org.bytedeco.javacpp.Pointer (get ~args ~i))]))
+                        (if (in (eval a)
+                                bytes shorts ints longs floats doubles
+                                :bytes :shorts :ints :long :floats :doubles
+                                :array :vector :address)
+                          `(new ~'org.bytedeco.javacpp.LongPointer
+                                (long-array [(get ~args ~i)]))
+                          `(new ~(symbol (str "org.bytedeco.javacpp."
+                                              (.toUpperCase (.substring s_a 0 1))
+                                              (.substring s_a 1 (.length s_a))
+                                              "Pointer"))
+                                (~(symbol (str "clojure.core/" s_a "-array")) [(get ~args ~i)])))))))
                 (flatten arguments))])))))
 
 (defmacro kernel-function
@@ -131,15 +134,16 @@
                        \"blend\"
                        640
                        480
-                       shorts
+                       Pointer
                        shorts
                        int
                        float))
-    (function ptr_1 ptr_2 10 0.5)"
+    (function ptr_1 9345348 10 0.5)"
   {:static true
    :tag    IFn}
   [file name width height & args_type]
   (let [function (gensym 'function_)
+        pointer (gensym 'pointer_)
         params (gensym 'params_)
         args (gensym 'args_)
         dim (gensym 'dim_)
@@ -155,7 +159,6 @@
            ~t_x (-> ~dim last first int)
            ~t_y (-> ~dim last last int)]
        (fn [& ~args]
-         (stereox.cuda.cuda-kernel/launch-kernel-function
-           ~function
-           (~params ~args)
-           ~b_x ~t_x ~b_y ~t_y)))))
+         (let [~pointer (~params ~args)]
+           (stereox.cuda.cuda-kernel/launch-kernel-function
+             ~function ~pointer ~b_x ~t_x ~b_y ~t_y))))))

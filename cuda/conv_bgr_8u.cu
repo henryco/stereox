@@ -17,7 +17,7 @@ __global__ void conv (
 //    /*R*/ dst[dst_p + 2] = src[src_p + 2] * 0.1;
 
     /*B*/ dst[dst_p + 0] = 255;
-    /*G*/ dst[dst_p + 1] = 0;
+    /*G*/ dst[dst_p + 1] = 255;
     /*R*/ dst[dst_p + 2] = 255;
   }
 }
