@@ -47,20 +47,6 @@
                   (.cols out)
                   (.rows out))
 
-        ;(println "-")
-        ;(println (.type curr)                                     ;16
-        ;         (.channels curr)                                 ;3
-        ;         (.depth curr)                                    ;0
-        ;         (.elemSize curr)                                 ;3
-        ;         (.step curr)                                     ;4096
-        ;         (.cols curr)                                     ;1280
-        ;         (.rows curr)                                     ;720
-        ;         (.isContinuous curr)                             ;false
-        ;         (-> curr .type CvType/ELEM_SIZE)                 ;3
-        ;         (-> curr .type CvType/typeToString)              ;CV_8UC3
-        ;         (-> curr .depth CvType/typeToString)             ;CV_8UC1
-        ;         )
-
         ))
     out))
 
