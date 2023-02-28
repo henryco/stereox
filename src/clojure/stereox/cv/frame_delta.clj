@@ -1,7 +1,8 @@
 (ns stereox.cv.frame-delta
   (:require [stereox.cuda.cuda-kernel :as kernel]
             [stereox.cuda.cuda :as cuda])
-  (:import (org.bytedeco.cuda.cudart CUctx_st CUfunc_st CUmod_st CUstream_st)
+  (:import (clojure.lang IFn)
+           (org.bytedeco.cuda.cudart CUctx_st CUfunc_st CUmod_st CUstream_st)
            (org.bytedeco.javacv OpenCVFrameConverter$ToMat OpenCVFrameConverter$ToOrgOpenCvCoreMat)
            (org.bytedeco.cuda.global cudart)
            (org.bytedeco.javacpp BytePointer IntPointer LongPointer Pointer PointerPointer)
@@ -9,15 +10,28 @@
            (org.bytedeco.opencv.opencv_core GpuMat Mat Scalar)
            (org.bytedeco.opencv.global opencv_cudaarithm opencv_imgproc opencv_cudaimgproc)
            (org.opencv.core CvType))
+  (:use [stereox.utils.cmacros])
   (:gen-class))
 
-(def ^:private *function (atom nil))
+(defn init [input]
+  (let [width (.cols input)
+        height (.rows input)]
+    {
 
-(defprotocol FrameDelta
-  "Delta calculator"
-  (delta [_ input] "Calculate delta"))
+     :function
+     (kernel/kernel-function
+       "cuda/test_bgr_8u.cu"
+       "test"
+       width
+       height
+       Pointer
+       int
+       int
+       int)
 
-(defn render [^GpuMat curr ^GpuMat prev]
+     }))
+
+(defn render [{:keys [^GpuMat curr ^GpuMat prev ^IFn function]}]
 
   (let [out (GpuMat. (.size curr) (.type curr))]
     ;(opencv_cudaarithm/absdiff
@@ -28,14 +42,10 @@
     (cuda/with-context
       (fn [_ _]
 
-        (let [function (deref *function)]
-
-          (function (.ptr ^GpuMat out)
-                    (.step out)
-                    (.cols out)
-                    (.rows out))
-
-          )
+        (function (.ptr ^GpuMat out)
+                  (.step out)
+                  (.cols out)
+                  (.rows out))
 
         ;(println "-")
         ;(println (.type curr)                                     ;16
@@ -54,42 +64,19 @@
         ))
     out))
 
-(defn init [width height]
-  (if (nil? @*function)
-    (do
-      ;(reset! *function
-      ;        (kernel/kernel-function
-      ;          "cuda/conv_bgr_8u.cu"
-      ;          "conv"
-      ;          width
-      ;          height
-      ;          :pointer
-      ;          :pointer
-      ;          ;shorts
-      ;          ;shorts
-      ;          int
-      ;          int
-      ;          int
-      ;          int))
-      (reset! *function
-              (kernel/kernel-function
-                "cuda/test_bgr_8u.cu"
-                "test"
-                width
-                height
-                Pointer
-                int
-                int
-                int))
-      )))
 
-(deftype CudaDelta [*prev]
+(defprotocol FrameDelta
+  "Delta calculator"
+  (delta [_ input] "Calculate delta"))
+
+(deftype CudaDelta [*prev *state]
   FrameDelta
   (delta [_ input]
-    (init (.cols input) (.rows input))
+    (if (nil? @*state)
+      (reset! *state (init input)))
     (if (nil? @*prev)
       (do (reset! *prev input) input)
-      (let [out (render input @*prev)]
+      (let [out (render (merge @*state {:curr input :prev @*prev}))]
         (reset! *prev input)
         out))))
 
@@ -97,4 +84,6 @@
   {:static true
    :tag    FrameDelta}
   []
-  (->CudaDelta (atom nil)))
+  (->CudaDelta
+    (atom nil)
+    (atom nil)))
