@@ -3,6 +3,10 @@
   (:gen-class)
   (:import (clojure.lang IFn)))
 
+(defn- context-state [*state context devices]
+  (merge (deref *state) {:context context
+                         :devices devices}))
+
 (defn- self-ref [self]
   {:self  self :*self self
    :state self :*state self
@@ -21,13 +25,13 @@
 
   Expects:
     f_render - Render callback that returns (new) frame:
-               [frame ...user_args... STATE & context devices] -> frame
+               [[user_args...] STATE] -> frame
 
     f_init   - Initialization callback that returns state:
-               [frame ...user_args... & context devices] -> STATE
+               [[user_args...] & context devices] -> STATE
 
   Returns:
-    fn: [frame & user_args] -> frame"
+    fn: [& user_args] -> frame"
   {:static true
    :tag    IFn}
 
@@ -38,15 +42,15 @@
 
   ([f_render f_init]
    (let [*state (atom nil)]
-     (fn [frame & args]
+     (fn [& args]
        (if (nil? @*state)
-         (reset! *state (merge (apply f_init (concat [frame] (vec args))) (self-ref *state))))
-       (apply f_render (concat [frame] (vec args) [@*state])))))
+         (reset! *state (merge (apply f_init (concat (vec args))) (self-ref *state))))
+       (apply f_render (concat (vec args) [@*state])))))
 
   ([f_render f_init _]
    (let [*state (atom nil)]
-     (fn [frame & args]
+     (fn [& args]
        (if (nil? @*state)
-         (cuda/with-context (fn [c d] (merge (apply f_init (concat [frame] (vec args) [c d])) (self-ref *state)))))
+         (cuda/with-context (fn [c d] (merge (apply f_init (concat (vec args) [c d])) (self-ref *state)))))
        (cuda/with-context
-         (fn [c d] (apply f_render (concat [frame] (vec args) [@*state c d]))))))))
+         (fn [c d] (apply f_render (concat (vec args) [(context-state *state c d)]))))))))

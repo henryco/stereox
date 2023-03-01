@@ -10,12 +10,12 @@
   (:use [stereox.utils.cmacros])
   (:gen-class))
 
-(defn initialize [input & _]
-  (let [width (.cols input)
-        height (.rows input)]
+(defn initialize [frame & _]
+  (let [width (.cols frame)
+        height (.rows frame)]
     {
      :last
-     input
+     frame
 
      :function
      (kernel/kernel-function
