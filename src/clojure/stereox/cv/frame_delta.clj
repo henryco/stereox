@@ -10,7 +10,7 @@
   (:use [stereox.utils.cmacros])
   (:gen-class))
 
-(defn init [input]
+(defn initialize [input]
   (let [width (.cols input)
         height (.rows input)]
     {
@@ -52,4 +52,4 @@
 
 (defn create-cuda-delta
   {:static true :tag IFn} []
-  (renderer/create render init))
+  (renderer/create render initialize))
