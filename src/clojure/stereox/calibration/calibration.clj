@@ -22,6 +22,7 @@
 
 (defrecord Props
   [^PersistentVector ids
+   ^PersistentVector codec
    ^File directory
    ^Float square_size
    ^Integer rows
@@ -462,6 +463,7 @@
                             disp_to_depth_mtx
                             fixed_dsp_dpt_mtx
                             (map #(CameraData. (:id %)
+                                               (:codec @*params)
                                                (:cam_mtx %)
                                                (:dist_cf %)
                                                (:rect_tr %)
@@ -585,6 +587,7 @@
                            images-number
                            square-size
                            columns
+                           codec
                            quality
                            full
                            rows
@@ -595,7 +598,7 @@
                            ] :as all}]
   (log/info (pr-str all))
   ; setup calibration properties
-  (reset! *params (->Props ids config-folder square-size
+  (reset! *params (->Props ids codec config-folder square-size
                            rows columns quality delay
                            images-number full))
   (log/info (pr-str @*params))

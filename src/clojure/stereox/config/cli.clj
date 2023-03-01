@@ -48,7 +48,6 @@
     :validate [#(or (not (.exists %)) (.isDirectory %)) "File should be DIRECTORY or not exist"]]
 
    [nil "--codec CODEC" "Camera output codec"
-    :default [\M \J \P \G]
     :default-desc "MJPG"
     :parse-fn #(-> (str %) .trim .toUpperCase .toCharArray seq vec)
     :validate [#(= 4 (count %)) "Must be 4 chars codec code, eg. MJPG"]]

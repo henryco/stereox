@@ -105,6 +105,9 @@
     (first (su/list-candidates config-folder width height
                                su/CALIB_POSTFIX ids))))
 
+(defn- merge-params [^CalibrationData data & {:keys [codec] :as args}]
+  (if (nil? codec) (merge args {:codec (-> data :camera_data first :codec)}) args))
+
 (defn configure
   "Creates new instance of ConfigLogic"
   {:static true
@@ -112,7 +115,7 @@
   [& {:as args}]
   (log/info (pr-str args))
   (let [c_data (read-calibration-data args)
-        params (map->ConfigParameters args)
+        params (map->ConfigParameters (merge-params c_data args))
         matrices [(:disparity_to_depth_matrix c_data)
                   (:disparity_to_depth_matrix_v2 c_data)]]
     (->ConfigLogic

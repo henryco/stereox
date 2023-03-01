@@ -17,6 +17,7 @@
 
 (defrecord CameraData
   [^String id
+   ^ISeq codec
    ^Mat camera_matrix
    ^Mat distortion_coefficients
    ^Mat rectification_transformation
@@ -79,6 +80,7 @@
   {:static true}
   [^CameraData data ^DataOutput os]
   (.writeUTF os (:id data))
+  (.writeUTF os (->> data :codec char-array (new String)))
   (cc/write-bytes os (cc/mat-to-bytes (:camera_matrix data)))
   (cc/write-bytes os (cc/mat-to-bytes (:distortion_coefficients data)))
   (cc/write-bytes os (cc/mat-to-bytes (:rectification_transformation data)))
@@ -93,6 +95,7 @@
    :static true}
   [^DataInput is]
   (->CameraData (.readUTF is)
+                (-> is .readUTF .toCharArray seq vec)
                 (cc/bytes-to-mat (cc/read-bytes is))
                 (cc/bytes-to-mat (cc/read-bytes is))
                 (cc/bytes-to-mat (cc/read-bytes is))

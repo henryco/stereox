@@ -79,7 +79,7 @@
   Expects array of chars, i.e. [\\M \\J \\P \\G]"
   {:tag    Integer
    :static true}
-  [^chars [^char a ^char b ^char c ^char d]]
+  [[^char a ^char b ^char c ^char d]]
   (VideoWriter/fourcc a b c d))
 
 (defn init-executor-pools
@@ -246,14 +246,15 @@
     @*allowed)
 
   (unify [this]
-    (let [[l r] (:capture @*io)]
-      (run! (fn [[k v]]
-              (let [lv (.get ^VideoCapture l v)
-                    rv (.get ^VideoCapture r v)]
-                (swap! *props assoc k lv)
-                (if (not= lv rv)
-                  (setup this k lv))))
-            (filtered-c-props))))
+    (if (<= 2 (count (:capture @*io)))
+      (let [[l r] (:capture @*io)]
+        (run! (fn [[k v]]
+                (let [lv (.get ^VideoCapture l v)
+                      rv (.get ^VideoCapture r v)]
+                  (swap! *props assoc k lv)
+                  (if (not= lv rv)
+                    (setup this k lv))))
+              (filtered-c-props)))))
 
   (setup [this m]
     (re-init this (into {} (map (fn [[k v]]

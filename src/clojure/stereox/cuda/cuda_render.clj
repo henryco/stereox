@@ -3,9 +3,15 @@
   (:gen-class)
   (:import (clojure.lang IFn)))
 
+(defn- self-ref [self]
+  {:self  self :*self self
+   :state self :*state self
+   :ref   self :*ref self
+   :this  self :*this self})
+
 (defn create
   "Creates render function, second version runs callbacks with cuda context.
-  Note that STATE argument has reference :*state which could be used to
+  Note that STATE argument has reference :*state which can be used to
   modify state from the inside of render callback.
 
   Expects:
@@ -23,12 +29,11 @@
    (let [*state (atom nil)]
      (fn [frame]
        (if (nil? @*state)
-         (reset! *state (merge (f_init frame) {:*state *state})))
+         (reset! *state (merge (f_init frame) (self-ref *state))))
        (f_render frame @*state))))
-
   ([f_render f_init _]
    (let [*state (atom nil)]
      (fn [frame]
        (if (nil? @*state)
-         (cuda/with-context (fn [c d] (merge (f_init frame c d) {:*state *state}))))
+         (cuda/with-context (fn [c d] (merge (f_init frame c d) (self-ref *state)))))
        (cuda/with-context (fn [c d] (f_render frame @*state c d)))))))
