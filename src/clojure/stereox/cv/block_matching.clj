@@ -2,7 +2,7 @@
   (:require [stereox.utils.iterators :as iter]
             [stereox.utils.commons :as commons]
             [stereox.cv.frame-delta :as dt])
-  (:import (clojure.lang Atom Ref)
+  (:import (clojure.lang Atom IFn Ref)
            (org.bytedeco.javacv OpenCVFrameConverter$ToMat OpenCVFrameConverter$ToOrgOpenCvCoreMat)
            (org.bytedeco.opencv.opencv_core GpuMat Mat Size Stream)
            (org.bytedeco.opencv.opencv_cudafilters Filter)
@@ -12,8 +12,7 @@
                                        opencv_cudafilters opencv_core opencv_cudaimgproc opencv_ximgproc
                                        opencv_cudaarithm)
            (org.opencv.core CvType)
-           (org.opencv.imgproc Imgproc)
-           (stereox.cv.frame_delta FrameDelta))
+           (org.opencv.imgproc Imgproc))
   (:gen-class))
 
 (defn- clamp

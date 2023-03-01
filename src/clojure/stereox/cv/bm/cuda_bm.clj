@@ -24,7 +24,7 @@
 (deftype CudaStereoBM [^Atom *params
                        ^Atom *matcher
                        ^Atom *dsp-filter
-                       ^FrameDelta deltar
+                       ^IFn deltar
                        disparity-to-depth-maps]
   BlockMatcher
   (options [_]
@@ -117,8 +117,8 @@
   (compute [this [left right]]
     (let [props (values this)
 
-          delta_left (delay (dt/delta deltar (core-to-gpu left)))
-          delta_right (delay (dt/delta deltar (core-to-gpu right)))
+          delta_left (delay (deltar (core-to-gpu left)))
+          delta_right (delay (deltar (core-to-gpu right)))
 
           cuda_l (delay (gpu-img-copy @delta_left Imgproc/COLOR_BGR2GRAY))
           cuda_r (delay (gpu-img-copy @delta_right Imgproc/COLOR_BGR2GRAY))
