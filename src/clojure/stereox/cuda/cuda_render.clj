@@ -9,31 +9,44 @@
    :ref   self :*ref self
    :this  self :*this self})
 
+(defn- self-state []
+  (let [*state (atom {})]
+    (reset! *state (self-ref *state))
+    *state))
+
 (defn create
-  "Creates render function, second version runs callbacks with cuda context.
+  "Creates render function, third version runs callbacks with cuda context.
   Note that STATE argument has reference :*state which can be used to
   modify state from the inside of render callback.
 
   Expects:
     f_render - Render callback that returns (new) frame:
-               [frame STATE & context devices] -> frame
+               [frame ...user_args... STATE & context devices] -> frame
 
     f_init   - Initialization callback that returns state:
-               [frame & context devices] -> STATE
+               [frame ...user_args... & context devices] -> STATE
 
   Returns:
-    fn: [frame] -> frame"
+    fn: [frame & user_args] -> frame"
   {:static true
    :tag    IFn}
+
+  ([f_render]
+   (let [*state (atom self-state)]
+     (fn [frame & args]
+       (apply f_render (concat [frame] (vec args) [@*state])))))
+
   ([f_render f_init]
    (let [*state (atom nil)]
-     (fn [frame]
+     (fn [frame & args]
        (if (nil? @*state)
-         (reset! *state (merge (f_init frame) (self-ref *state))))
-       (f_render frame @*state))))
+         (reset! *state (merge (apply f_init (concat [frame] (vec args))) (self-ref *state))))
+       (apply f_render (concat [frame] (vec args) [@*state])))))
+
   ([f_render f_init _]
    (let [*state (atom nil)]
-     (fn [frame]
+     (fn [frame & args]
        (if (nil? @*state)
-         (cuda/with-context (fn [c d] (merge (f_init frame c d) (self-ref *state)))))
-       (cuda/with-context (fn [c d] (f_render frame @*state c d)))))))
+         (cuda/with-context (fn [c d] (merge (apply f_init (concat [frame] (vec args) [c d])) (self-ref *state)))))
+       (cuda/with-context
+         (fn [c d] (apply f_render (concat [frame] (vec args) [@*state c d]))))))))

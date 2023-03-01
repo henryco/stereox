@@ -10,7 +10,7 @@
   (:use [stereox.utils.cmacros])
   (:gen-class))
 
-(defn initialize [input]
+(defn initialize [input & _]
   (let [width (.cols input)
         height (.rows input)]
     {
@@ -19,28 +19,39 @@
 
      :function
      (kernel/kernel-function
-       "cuda/test_bgr_8u.cu"
-       "test"
+       "cuda/trecomxpand_bgr_8u.cu"
+       "compress_expand"
        width
        height
        Pointer
+       Pointer
+       int
+       int
        int
        int
        int)
 
      }))
 
-(defn render [^GpuMat frame & {:keys [^GpuMat last ^IFn function ^Atom *state]}]
+(defn render [^GpuMat frame
+              ^Integer threshold
+              & {:keys [^GpuMat last
+                        ^IFn function
+                        ^Atom *state]}]
   (if (not= frame last)
-    (let [out (GpuMat. (.size frame) (.type frame))]
-      ;(opencv_cudaarithm/absdiff
-      ;  ^GpuMat prev
-      ;  ^GpuMat frame
-      ;  ^GpuMat out)
+    (let [out (GpuMat. (.size frame) (.type frame))
+          dif (GpuMat. (.size frame) (.type frame))]
+      (opencv_cudaarithm/absdiff
+        ^GpuMat frame
+        ^GpuMat last
+        ^GpuMat dif)
 
       ; TODO
 
-      (function (.ptr ^GpuMat out)
+      (function (.ptr ^GpuMat dif)
+                (.ptr ^GpuMat out)
+                threshold
+                (.step dif)
                 (.step out)
                 (.cols out)
                 (.rows out))

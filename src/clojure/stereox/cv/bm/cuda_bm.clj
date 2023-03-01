@@ -117,8 +117,8 @@
   (compute [this [left right]]
     (let [props (values this)
 
-          delta_left (delay (deltar (core-to-gpu left)))
-          delta_right (delay (deltar (core-to-gpu right)))
+          delta_left (delay (deltar (core-to-gpu left) 125)) ;TODO
+          delta_right (delay (deltar (core-to-gpu right) 75)) ;TODO
 
           cuda_l (delay (gpu-img-copy @delta_left Imgproc/COLOR_BGR2GRAY))
           cuda_r (delay (gpu-img-copy @delta_right Imgproc/COLOR_BGR2GRAY))
