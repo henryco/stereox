@@ -1,5 +1,5 @@
 # stereox
-FIXME
+# DEPRECATED
 
 ## License
 
